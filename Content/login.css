@@ -1,0 +1,651 @@
+/*!
+ * Start Bootstrap - Full HTML Template (http://startbootstrap.com)
+ * Code licensed under the Apache License v2.0.
+ * For details, see http://www.apache.org/licenses/LICENSE-2.0.
+ */
+body {
+    font-family: Helvetica, Arial, sans-serif;
+    font-size: 12px;
+    line-height: 1.2;
+    color: #666;
+    background-color: #ffffff;
+}
+
+@media (max-width: 480px) {
+	.container {
+    margin-left: 35px;
+	}
+	.formTop {
+    padding:50px 0px 20px 0px;
+	}
+}
+@media (max-width: 767px) {
+	.container {
+    margin-left: 35px;
+	}
+	.formTop {
+    padding:70px 0px 20px 0px;
+	}
+}
+@media (min-width: 768px) {
+	.container {
+    margin-left: 130px;
+	}
+	.formTop {
+    padding:110px 0px 20px 0px;
+	}
+}
+@media (min-width: 992px) {
+	.container {
+    margin-left: 130px;
+	}
+	.formTop {
+    padding:110px 0px 20px 0px;
+	}
+}
+@media (min-width: 1200px) {
+	.container {
+    margin-left: 130px;
+	}
+	.formTop {
+    padding:110px 0px 20px 0px;
+	}
+}
+@font-face {
+    font-family: 'Mirai_regular';
+    src: local('Mirai_regular'),
+         url('../fonts/mirai/mirai-regular-webfont.eot?#iefix') format('embedded-opentype'),
+         url('../fonts/mirai/mirai-regular-webfont.woff') format('woff'),
+         url('../fonts/mirai/mirai-regular-webfont.ttf') format('truetype'),
+         url('../fonts/mirai/mirai-regular-webfont.svg#Mirai_regular') format('svg');
+    font-weight: normal;
+    font-style: normal;
+}
+@font-face {
+    font-family: 'Mirai_medium';
+    src: local('Mirai_medium'),
+         url('../fonts/mirai/mirai-medium-webfont.eot?#iefix') format('embedded-opentype'),
+         url('../fonts/mirai/mirai-medium-webfont.woff') format('woff'),
+         url('../fonts/mirai/mirai-medium-webfont.ttf') format('truetype'),
+         url('../fonts/mirai/mirai-medium-webfont.svg#Mirai_medium') format('svg');
+    font-weight: normal;
+    font-style: normal;
+}
+@font-face {
+    font-family: 'Mirai_bold';
+    src: local('Mirai_bold'),
+         url('../fonts/mirai/mirai-bold-webfont.eot?#iefix') format('embedded-opentype'),
+         url('../fonts/mirai/mirai-bold-webfont.woff') format('woff'),
+         url('../fonts/mirai/mirai-bold-webfont.ttf') format('truetype'),
+         url('../fonts/mirai/mirai-bold-webfont.svg#Mirai_bold') format('svg');
+    font-weight: normal;
+    font-style: normal;
+} 
+body {
+    font-family: 'Mirai_regular';
+    margin-top: 50px; /* Required margin for .navbar-fixed-top. Remove if using .navbar-static-top. Change if height of navigation changes. */
+}
+
+.full {
+    background: url('../Images/SEL-ilu-login.jpg') no-repeat left center fixed;
+    -webkit-background-size: cover;
+    -moz-background-size: cover;
+    background-size: cover;
+    -o-background-size: cover;
+}
+.btn-warning{
+    background-color: #D6730E;
+}
+
+.footer {
+   font-family: 'Mirai_regular';
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  /* Set the fixed height of the footer here */
+  height: 70px;
+  background: white;
+  left: 0;
+  color: #B9B9B9;
+  font-size:16px;
+  padding:25px;
+  border-top:1px solid #F0F0F0;
+}
+
+body{
+    overflow-x:hidden;
+}
+.subtitulo_login{
+    font-family: 'Mirai_regular';
+    font-size:26px;
+    text-align: left;
+    color: #606363;
+}
+.control-label-login{
+    font-family: 'Mirai_regular';
+    font-size:18px;
+    color:  #606363;
+    text-align:left !important;
+}
+.form-control-login{
+    border:1px solid  #C0C0C0;
+}
+.form-control-login:focus{
+    border:1px solid  #C0C0C0;
+    box-shadow:none;
+}
+
+.btn_aceptar{
+    display: inline-block;
+    font-size: 16px;
+    color: #fff;
+    text-decoration: none;
+    border-radius: 50px;
+    cursor: pointer;
+    background: #FF6A39;
+    position: relative;
+    padding: 12px 40px;
+    outline: none;
+    border: 0;
+    -webkit-transition: color 0.25s, background-color 0.25s, box-shadow 0.25s, -webkit-transform 0.25s;
+    -moz-transition: color 0.25s, background-color 0.25s, box-shadow 0.25s, -moz-transform 0.25s;
+    transition: color 0.25s, background-color 0.25s;
+}
+.btn_aceptar:hover {
+    background: #ff580f;
+    box-shadow: 0 3px 12px rgba(255, 85, 40, 0.5);
+}
+.titulo_login{
+     font-family: 'Mirai_bold';
+     font-size: 40px;
+     color: #606363;
+     padding: 0px;
+}
+.btn-principal-login{
+    font-family: Mirai_medium, sans-serif;
+    min-width: 100px;
+    display: inline-block;
+    font-size: 14px;
+    color:#fff;
+    background:#FF6A39;
+    text-decoration: none;
+    border-radius: 50px;
+    cursor: pointer;
+    position: relative;
+    padding: 5px 15px;
+    -webkit-transition: color 0.25s, background-color 0.25s, box-shadow 0.25s, -webkit-transform 0.25s;
+    -moz-transition: color 0.25s, background-color 0.25s, box-shadow 0.25s, -moz-transform 0.25s;
+    transition: color 0.25s, background-color 0.25s;
+}
+.btn-principal-login:hover{
+    font-style:normal;
+    text-decoration:none;
+    background: #ff580f;
+    color:white;
+    box-shadow: 0 3px 12px rgba(255, 85, 40, 0.5);
+}
+.icono_alerta_modal {
+    float: left;
+    margin-right: 10px;
+}
+.icono_alerta_modal img {
+    width: 30px;
+    height: 30px;
+}
+.content_texto_modal {
+    margin-left: 40px;
+}
+.modal-header {
+    font-family: Mirai_medium, sans-serif ;
+    font-size: 14px;
+    padding: 15px;
+    border-bottom: 0;
+    background: #6F79BD !important;
+    color: #fff;
+    font-weight:normal;
+}
+.error-msg {
+    font-family: 'Mirai_medium';
+    font-size: 14px;
+    color: #606363;
+    font-weight: normal!important;
+}
+.icono_check{
+    width: 17px;
+    height: 17px;
+    background: url(../Images/iconos/blanco/icono_check.png) no-repeat;
+    display: inline-block;
+    vertical-align: top;
+}
+.icono_refresh{
+    width: 17px;
+    height: 17px;
+    background: url(../Images/iconos/blanco/icono_actualizar.png) no-repeat;
+    display: inline-block;
+    vertical-align: top;
+}
+.icono_new{
+    width: 17px;
+    height: 17px;
+    background: url(../Images/iconos/blanco/icono_nuevo.png) no-repeat;
+    display: inline-block;
+    vertical-align: top;
+}
+    
+.modal-footer{
+    padding: 20px 0 20px;
+    margin: 0px 15px;
+    border-top: 1px solid silver;
+}
+.bootstrap-dialog-body{
+    overflow:hidden;
+}
+/*INI RQ2020-180*/
+
+.actualiza-datos .modal-dialog{
+    width: 600px !important;
+}
+
+.modal-body {
+    overflow: hidden;
+    font-family: Mirai_medium, sans-serif!important;
+     font-size:14px !important;
+}
+.titulo_pop_sel{
+    font-family: Mirai_medium, sans-serif;
+    color: #606363;
+    margin-left:15px;
+    margin-right:15px;
+    border-bottom:1px solid #FF6A39;
+    background:white !important;
+    padding-bottom: 7px;
+
+}
+.form-control:focus{
+    border-color:  #00CBC1;
+    outline:0;
+    box-shadow:none;
+}
+.form-control[readonly]{
+    cursor: not-allowed;
+}
+.form-control[disabled]{
+    background: #E6E6E6 !important;
+
+}
+select.form-control {
+    font-family: Mirai_medium, sans-serif;
+    color: #606363;
+    font-size:12px;
+    font-weight: normal;
+    background: url('../Images/iconos/color/flecha_abajo.png') no-repeat right center #fff !important;
+    padding-right:26px;
+    -moz-appearance: none;
+    -webkit-appearance: none;
+    appearance: none;
+    border: 1px solid #C0C0C0;
+}
+input.form-control{
+    font-family: Mirai_medium, sans-serif;
+    color: #606363;
+    background:white;
+    font-size:12px;
+    border: 1px solid #C0C0C0;
+}
+
+textarea.form-control{
+    background:white !important;
+    border: 1px solid #C0C0C0;
+}
+.panel-heading {
+    font-family: Mirai_medium, sans-serif;
+    font-size: 12px;
+    color: white !important;
+    background: #00CBC1 !important;
+    border-color: #00CBC1;
+    padding: 6px 10px;
+    text-indent: 0px;
+    text-transform: uppercase;
+    /* border-color: #dddddd; */
+}
+.icono_cancelar{
+    width: 15px;
+    height: 14px;
+    background: url(../Images/iconos/color/icono_cancelar_color.png) no-repeat;
+    background-size: 100%;
+    display: inline-block;
+    /* margin-top: 0px; */
+    vertical-align: top;
+    margin-top: 2px;
+}
+.btn {
+    display: inline-block;
+    padding: 6px 12px;
+    margin-bottom: 0;
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 1.42857143;
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: middle;
+    -ms-touch-action: manipulation;
+    touch-action: manipulation;
+    cursor: pointer;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    background-image: none;
+    border: 1px solid transparent;
+    border-radius: 4px;
+}
+.btn-principal{
+    font-family: Mirai_medium, sans-serif;
+    min-width: 100px;
+    display: inline-block;
+    font-size: 14px;
+    color:#fff;
+    background:#FF6A39;
+    text-decoration: none;
+    border-radius: 50px;
+    cursor: pointer;
+    position: relative;
+    padding: 5px 15px;
+    -webkit-transition: color 0.25s, background-color 0.25s, box-shadow 0.25s, -webkit-transform 0.25s;
+    -moz-transition: color 0.25s, background-color 0.25s, box-shadow 0.25s, -moz-transform 0.25s;
+    transition: color 0.25s, background-color 0.25s;
+}
+.btn-principal:hover{
+    font-style:normal;
+    text-decoration:none;
+    background: #ff580f;
+    color:white;
+    box-shadow: 0 3px 12px rgba(255, 85, 40, 0.5);
+}
+.btn-principal:focus{
+    color:#fff;
+    background:#FF6A39;
+}
+ .control-label{
+     font-family: Mirai_medium, sans-serif;
+     color: #606363;
+     font-weight: normal;
+     font-size:12px;
+ }
+ .btn-secundario{
+    font-family: Mirai_medium, sans-serif;
+    min-width: 100px;
+    display: inline-block;
+    font-size: 14px;
+    color: #FF6A39;
+    text-decoration: none;
+    border-radius: 50px;
+    cursor: pointer;
+    background: white;
+    position: relative;
+    padding: 5px 15px;
+    border:1px solid #FF6A39;
+    -webkit-transition: color 0.25s, background-color 0.25s, box-shadow 0.25s, -webkit-transform 0.25s;
+    -moz-transition: color 0.25s, background-color 0.25s, box-shadow 0.25s, -moz-transform 0.25s;
+    transition: color 0.25s, background-color 0.25s;
+}
+.btn-secundario:hover{
+    font-style:normal;
+    text-decoration:none;
+    color:white;
+    background: #FF6A39;
+}
+.btn-secundario:focus{
+    background: white;
+    color: #FF6A39;
+}
+.btn-secundario:hover .icono_cancelar{
+     width: 15px;
+    height: 14px;
+    background: url(../Images/iconos/blanco/icono_cancelar.png);
+    background-size: 100%;
+}
+.btn-secundario:focus .icono_cancelar{
+    width: 15px;
+    height: 14px;
+    background: url(../Images/iconos/color/icono_cancelar_color.png) no-repeat;
+    background-size: 100%;
+}
+.form-horizontal .form-group {
+    margin-right: -15px;
+    margin-left: -15px;
+}
+.col-lg-2 {
+    position: relative;
+    min-height: 1px;
+    padding-right: 15px;
+    padding-left: 15px;
+    width: 100%;
+}
+.form-group {
+    margin-bottom: 3px !important;
+}
+@media (min-width: 1200px) {
+    .col-lg-1,
+    .col-lg-2,
+    .col-lg-3,
+    .col-lg-4,
+    .col-lg-5,
+    .col-lg-6,
+    .col-lg-7,
+    .col-lg-8,
+    .col-lg-9,
+    .col-lg-10,
+    .col-lg-11 {
+        float: left;
+    }
+
+    .col-lg-offset-0 {
+        margin-left: 0;
+    }
+
+    .col-lg-2 {
+        width: 16.666666666666664%;
+    }
+}
+
+@media (min-width: 992px) {
+    .container {
+        max-width: 970px;
+    }
+}    
+
+.input-sm {
+    height: 30px;
+    padding: 5px 10px;
+    font-size: 12px;
+    line-height: 1.5;
+    border-radius: 3px;
+}
+select.input-sm {
+    height: 30px;
+    line-height: 30px;
+}
+
+.panel-default > .panel-heading {
+    color: #333333;
+    background-color: #f5f5f5;
+    border-color: #dddddd;
+}
+
+.panel-default > .panel-heading + .panel-collapse .panel-body {
+    border-top-color: #dddddd;
+}
+
+.panel-default > .panel-footer + .panel-collapse .panel-body {
+    border-bottom-color: #dddddd;
+}
+
+.panel {
+    margin-bottom: 16px;
+    background-color: #ffffff;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    -webkit-box-shadow: 0 1px 1px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.05);
+}
+
+.panel-default {
+    border-color: #dddddd;
+}
+
+.panel-body {
+    padding: 15px;
+}
+
+.panel-body:before,
+.panel-body:after {
+    display: table;
+    content: " ";
+}
+
+.panel-body:after {
+    clear: both;
+}
+
+.panel-body:before,
+.panel-body:after {
+    display: table;
+    content: " ";
+}
+
+.panel-body:after {
+    clear: both;
+}
+
+.panel > .list-group {
+    margin-bottom: 0;
+}
+
+.panel > .list-group .list-group-item {
+    border-width: 1px 0;
+}
+
+.panel > .list-group .list-group-item:first-child {
+    border-top-right-radius: 0;
+    border-top-left-radius: 0;
+}
+
+.panel > .list-group .list-group-item:last-child {
+    border-bottom: 0;
+}
+
+.panel-heading + .list-group .list-group-item:first-child {
+    border-top-width: 0;
+}
+
+.panel > .table {
+    margin-bottom: 0;
+}
+
+.panel > .panel-body + .table {
+    border-top: 1px solid #dddddd;
+}
+
+.panel-heading {
+    padding: 7px 15px;
+    border-bottom: 1px solid transparent;
+    border-top-right-radius: 3px;
+    border-top-left-radius: 3px;
+}
+
+.panel-title {
+    margin-top: 0;
+    margin-bottom: 0;
+    font-size: 16px;
+}
+
+    .panel-title > a {
+        color: inherit;
+    }
+
+.panel-footer {
+    padding: 10px 15px;
+    background-color: #f5f5f5;
+    border-top: 1px solid #dddddd;
+    border-bottom-right-radius: 3px;
+    border-bottom-left-radius: 3px;
+}
+
+label {
+    display: inline-block;
+    margin-bottom: 5px;
+}
+
+*,
+*:before,
+*:after {
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+}
+
+.form-horizontal .form-group {
+    margin-right: -15px;
+    margin-left: -15px;
+}
+
+.form-horizontal .form-group:before,
+.form-horizontal .form-group:after {
+    display: table;
+    content: " ";
+}
+
+.form-horizontal .form-group:after {
+    clear: both;
+}
+
+.form-horizontal .form-group:before,
+.form-horizontal .form-group:after {
+    display: table;
+    content: " ";
+}
+
+.form-horizontal .form-group:after {
+    clear: both;
+}
+
+a {
+    color: #706f6f;
+    text-decoration: none;
+}
+
+    a:hover,
+    a:focus {
+        color: #237f70;
+        text-decoration: none;
+    }
+
+    a:focus {
+        outline: thin dotted #333;
+        outline: 5px auto -webkit-focus-ring-color;
+        outline-offset: -2px;
+    }
+
+.control-label-login{
+    font-family: 'Mirai_regular';
+    font-size:18px;
+    color:  #606363;
+    text-align:left !important;
+    float: left;
+}
+
+.close {
+    float: right;
+    font-size: 21px;
+    font-weight: bold;
+    line-height: 1;
+    color: #000000;
+    text-shadow: 0 1px 0 #ffffff;
+    opacity: 0.2;
+    filter: alpha(opacity=20);
+}
+
+.bootstrap-dialog-header{
+    width: 100%;
+}

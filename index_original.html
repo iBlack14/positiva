@@ -1,0 +1,969 @@
+
+
+
+    <div class="modalCrono"></div>
+    <script>
+    var nameAplicativo = '/';
+    var bReCaptcha = '1';
+    //RQ2020-852 INICIO
+    var ServiceIpp = 'https://api.ipify.org?format=json';
+    var ipPublica = '0.0.0.0';
+
+    function validakeyespacioblanco() {
+        var e_k = event.keyCode;
+        if (e_k == 32) {
+            event.returnValue = false;
+        }
+        else {
+            event.returnValue = true;
+        }
+    }
+
+    function validakeyOnlyNumbers() {
+        return event.charCode >= 48 && event.charCode <= 57
+    }
+
+    function logueo() {
+        $("#btn_Aceptar").prop("disabled", true);
+        if ($("#Usuario").val() == "") {
+            alertValida("Debe ingresar su nombre de Usuario.");
+            $("#Usuario").focus();
+            $("#btn_Aceptar").removeAttr('disabled');
+            return false;
+        }
+        if ($("#Password").val() == "") {
+            alertValida("Debe ingresar su Password.");
+            $("#Password").focus();
+            $("#btn_Aceptar").removeAttr('disabled');
+            return false;
+        }
+
+        var usuario = $("input#Usuario").val();
+        var password = $("input#Password").val();
+
+        if (bReCaptcha == "1") {
+            var tokenCaptcha = grecaptcha.getResponse();
+
+            if (tokenCaptcha.length === 0)
+            {
+                alertValida("Debe completar el Captcha.");
+                $("#btn_Aceptar").removeAttr('disabled');
+                return false;
+            }
+
+            var model = {
+                Usuario: usuario.trim(),
+                Password: password.trim(),
+                Publica: ipPublica,
+                CodigoOtp: '',
+            };
+            sendRequest(model, tokenCaptcha);
+        } else {
+            var model = {
+                Usuario: usuario.trim(),
+                Password: password.trim(),
+                Publica: ipPublica,
+                Key: '',
+                Captcharesponse: '',
+                CodigoOtp: '',
+            };
+            sendRequest(model);
+        }
+    }
+
+
+
+    function alertModal(mensaje) {
+        $("#mensajeAlert").html(mensaje);
+        $("#ModalMensaje").modal();
+    }
+    function presionaEnter() {
+        var e_k = event.keyCode;
+        if (e_k == 13) {
+            logueo();
+        }
+        else {
+
+        }
+    }
+    function alertValidaLogin(mensaje, codUsuario) {
+        var $textAndPic = $('<div></div>');
+        $textAndPic.append(' <i class="icono_alerta_modal"><img src="../Images/iconos/color/icono-alerta.png" alt=""></i> ');
+        $textAndPic.append('<div class="content_texto_modal"><span class="error-msg">' + mensaje + '</span></div>');
+
+        BootstrapDialog.show({
+            title: 'Alerta',
+            cssClass: 'actualiza-datos',
+            type: BootstrapDialog.TYPE_WARNING,
+            icon: 'icono_check',
+            message: $textAndPic,
+            closable: false,
+            backdrop: 'static',
+            buttons: [{
+                cssClass: 'btn-principal',
+                icon: 'icono_check',
+                label: 'Aceptar',
+                action: function (dialogRef) {
+                    dialogRef.close();
+                    ActualizarDatos(codUsuario);
+                }
+            }],
+        });
+    }
+
+    function alertValidaLoginBootstrap(mensaje) {
+        document.getElementById('mensajeAlerta').textContent = mensaje;
+        var modal = new bootstrap.Modal(document.getElementById('alertaModal'));
+        modal.show();
+    }
+
+    function mostrarAlerta(mensaje) {        
+        document.getElementById('mensajeAlertaPersonalizada').textContent = mensaje;
+        document.getElementById('alertaPersonalizada').style.display = 'block';
+    }
+    function ocultarAlertaPersonalizada() {
+        document.getElementById('alertaPersonalizada').style.display = 'none';
+    }
+
+    function alertValida(mensaje) {
+        var $textAndPic = $('<div></div>');
+        $textAndPic.append(' <i class="icono_alerta_modal"><img src="../Images/iconos/color/icono-alerta.png" alt=""></i> ');
+        $textAndPic.append('<div class="content_texto_modal"><span class="error-msg">' + mensaje + '</span></div>');
+        BootstrapDialog.show({
+            title: 'Alerta',
+            cssClass: 'actualiza-datos',
+            type: BootstrapDialog.TYPE_WARNING,
+            icon: 'icono_check',
+            message: $textAndPic,
+            closable: false,
+            backdrop: 'static',
+            buttons: [{
+                cssClass: 'btn-principal',
+                icon: 'icono_check',
+                label: 'Aceptar',
+                action: function (dialogRef) {
+                    dialogRef.close();
+                }
+            }],
+        });
+    }
+    function alertRedireccion(mensaje, url) {
+        var $textAndPic = $('<div></div>');
+        $textAndPic.append(' <i class="icono_alerta_modal"><img src="../Images/iconos/color/icono-alerta.png" alt=""></i> ');
+        $textAndPic.append('<div class="content_texto_modal"><span class="error-msg">' + mensaje + '</span></div>');
+        BootstrapDialog.show({
+            title: 'Alerta',
+            cssClass: 'actualiza-datos',
+            type: BootstrapDialog.TYPE_WARNING,
+            icon: 'icono_check',
+            message: $textAndPic,
+            closable: false,
+            buttons: [{
+                cssClass: 'btn-principal',
+                icon: 'icono_check',
+                label: 'Aceptar',
+                action: function (dialogRef) {
+                    dialogRef.close();
+                    location.href = url;
+                }
+            }],
+        });
+    }
+    /*INI RQ2020-180*/
+    function recuperarContrasena() {
+        $('#verRecuperarClave').modal('show');
+        $.ajax({
+            url: nameAplicativo + "Usuarios/RecuperarClave",
+            type: 'Get',
+            async: true,
+            cache: false,
+            success: function (data) {
+
+                $("#RecuperarClave").html(data);
+            },
+            error: function () {
+                alert("Se produjo un error al obtener los datos.");
+            }
+        });
+    }
+
+    function ActualizarDatos(idUsu) {
+
+        var ID_usuario = idUsu;
+        $.ajax({
+            url: nameAplicativo + "Usuarios/EditarUsuario",
+            type: 'Get',
+            data: {
+                idUsuario: ID_usuario
+            },
+            async: true,
+            cache: false,
+            success: function (data) {
+
+                $("#RecuperarClave").html(data);
+                $('#verRecuperarClave').modal('show');
+            },
+            error: function () {
+                alert("Se produjo un error al obtener los datos.");
+            }
+        });
+
+    }
+
+    function alertValidaSesion(mensaje) {
+        var $textAndPic = $('<div></div>');
+        $textAndPic.append(' <i class="icono_alerta_modal"><img src="../Images/iconos/color/icono-alerta.png" alt=""></i> ');
+        $textAndPic.append('<div class="content_texto_modal"><span class="error-msg">' + mensaje + '</span></div>');
+        BootstrapDialog.show({
+            title: 'Alerta',
+            cssClass: 'actualiza-datos',
+            type: BootstrapDialog.TYPE_WARNING,
+            icon: 'icono_check',
+            message: $textAndPic,
+            closable: true,
+            buttons: [{
+                cssClass: 'btn-principal',
+                icon: 'icono_check',
+                label: 'Aceptar',
+                action: function (dialogRef) {
+                    dialogRef.close();
+                }
+            }],
+        });
+    }
+    /*FIN RQ2020-180*/
+
+        function sendRequest(model, tokenCaptcha) {
+            $.ajax({
+                url: "/Home/Ingreso",
+                type: "POST",
+                data: {
+                    sData: validarFormato(JSON.stringify(model)),
+                    sTokenCaptcha: tokenCaptcha
+                },
+                dataType: "json",
+                beforeSend: function () {
+                    $("#loader").show(); // Mostrar el loader antes de enviar la solicitud
+                },
+                success: function (data) {
+                    if (data) {
+                        var arrSalida = data.mensajes.split('|'); // RQ2020-180
+                        var mens = arrSalida[0];
+                        var pwd_valor = data.FlagPwdActualizada;
+
+
+                        if (pwd_valor !== "1") {
+                            $.ajax({
+                                url: nameAplicativo + "CambiarClaveInicio/CambioContrasena",
+                                type: 'GET',
+                                async: true,
+                                cache: false,
+                                success: function (data) {
+                                    $("#CambiarClaveupd").html(data);
+                                    $("#H").html("");
+                                    if (pwd_valor === "2") {
+                                        $("#H").html("Cambiar de Contraseña-Primer Ingreso");
+                                    } else {
+                                        $("#H").html("Cambiar de Contraseña-Excedió los 90 días");
+                                    }
+                                    $('#verCambiarClaveupd').modal('show');
+                                },
+                                error: function () {
+                                    $("#loader").hide();
+                                    alert("Se produjo un error al obtener los datos.");
+                                }, complete: function () {
+                                    $("#loader").hide();
+                                }
+                            });
+                            $("#btn_Aceptar").removeAttr('disabled');
+                        } else {
+                            if (mens === "OK") {                            
+                                if (data.VistaListadoVentas == 1) {
+                                    var urlVenta = "/Ventas/ListarVentas";
+                                    window.location.href = urlVenta;
+                                } else if (data.VistaPlanilla == 1) {
+                                    var urlPlanilla = "/Planilla";
+                                    window.location.href = urlPlanilla;
+                                } else {
+                                    var urlHome = "/Home/Vista";
+                                    window.location.href = urlHome;
+                                }
+                            } else if (mens === "COMPLETAR_OTP") {
+                                $("#loader").hide();
+                                var IdRequestOtp = data.IdRequestOtp;
+
+                                if (IdRequestOtp === "0") {
+                                    var menRes = arrSalida[1];
+                                    //console.log("envio -> menRes", menRes);
+                                    if (menRes === "") {
+                                        mostrarAlerta('Estimado usuario, se presenta problemas con el envío del código de verificación.');
+                                    } else {
+                                        mostrarAlerta(menRes);
+                                    }
+                                    $("#hiddenIdRequestOtp").val('');
+                                    $("#hiddenModalOtp1").val('');
+                                    $("#hiddenModalOtp2").val('');
+                                    $("#hiddenModalOtp3").val('');
+                                    $("#hiddenTiempoValOtp").val('');
+                                    $("#Usuario").val('');
+                                    $("#Password").val('');
+
+                                    $("#btn_Aceptar").removeAttr('disabled');
+                                } else {
+                                    $("#hiddenIdRequestOtp").val('');
+                                    $("#hiddenModalOtp1").val('');
+                                    $("#hiddenModalOtp2").val('');
+                                    $("#hiddenModalOtp3").val('');
+                                    $("#hiddenTiempoValOtp").val('');
+                                    $("#codigoOtp").val('');
+                                
+                                    //$("input#Usuario").attr('disabled', 'disabled');
+                                    //$("input#Password").attr('disabled', 'disabled');
+                                    //$("input#Password").removeAttr('disabled');                                 
+                                
+                                    $("#hiddenIdRequestOtp").val(IdRequestOtp);
+                                    $("#hiddenModalOtp1").val(arrSalida[1]);
+                                    $("#hiddenModalOtp2").val(arrSalida[2]);
+                                    $("#hiddenModalOtp3").val(arrSalida[3]);
+                                    $("#hiddenTiempoValOtp").val(data.TiempoValOtp);
+                                
+                                    $("#btn_Aceptar").removeAttr('disabled');
+                                    iniciarTimer();
+                                    $('#validarOtpParam').modal('show');
+                                }
+                            } else if (mens === "actualizarDatos") { // INI RQ2020-180
+                                $("#loader").hide();
+                                //console.log(arrSalida[1]);
+                                alertValidaLogin('Estimado usuario, por motivos de seguridad se debe actualizar sus datos.', arrSalida[1]);
+                                $("#btn_Aceptar").removeAttr('disabled');
+                            } else if (mens === "Azure") {
+                                $("#loader").hide();
+                                location.href = arrSalida[1]; // RQ2023-473
+                            } else if (mens === "ULTIMO_INTENTO") {
+                                $("#loader").hide();
+                                alertRedireccion("Este es el último intento, si falla en la clave, el usuario será bloqueado.", "/Home");
+                            } else {
+                                $("#loader").hide();
+                                alertRedireccion(mens, "/Home");
+                                $("#btn_Aceptar").removeAttr('disabled');
+                            }
+                        }
+                    }
+                },
+                error: function (xhr, status, error) {
+                    //console.error("Error:", error);
+                    $("#loader").hide();
+                    $("#btn_Aceptar").removeAttr('disabled');
+                }
+            });
+        }
+
+        function reenviarCodigoOtp() {            
+            //$("#btn_Reenviar").prop("disabled", true);
+            $("#btn_ValidarOtp").prop("disabled", true);
+            if ($("#Usuario").val() == "") {
+                mostrarAlerta("Debe ingresar su nombre de Usuario.");
+                $("#Usuario").focus();
+                //$("#btn_Reenviar").removeAttr('disabled');
+                $("#btn_ValidarOtp").removeAttr('disabled');
+                return false;
+            }
+            if ($("#Password").val() == "") {
+                mostrarAlerta("Debe ingresar su Password.");
+                $("#Password").focus();
+                //$("#btn_Reenviar").removeAttr('disabled');
+                $("#btn_ValidarOtp").removeAttr('disabled');
+                return false;
+            }
+            $("#codigoOtp").val('');
+            var usuario = $("input#Usuario").val();
+            var password = $("input#Password").val();
+            var idRequestOtp = $("#hiddenIdRequestOtp").val();
+            //console.log("idRequestOtp", idRequestOtp);
+            if (bReCaptcha == "1") {
+                var tokenCaptcha = grecaptcha.getResponse();
+                //if (tokenCaptcha.length === 0) {
+                //    mostrarAlerta("Debe completar el Captcha.");
+                //    //$("#btn_Reenviar").removeAttr('disabled');
+                //    $("#btn_ValidarOtp").removeAttr('disabled');
+                //    return false;
+                //}
+                var model = {
+                    Usuario: usuario.trim(),
+                    Password: password.trim(),
+                    Publica: ipPublica,
+                    CodigoOtp: '',
+                    IdRequestOtp: idRequestOtp,
+                    EsReenvioCodigoOtp: 1,
+                };
+                sendRequestReenviarCodigoOtp(model, tokenCaptcha);
+            } else {
+                var model = {
+                    Usuario: usuario.trim(),
+                    Password: password.trim(),
+                    Publica: ipPublica,
+                    Key: '',
+                    Captcharesponse: '',
+                    IdRequestOtp: idRequestOtp,
+                    CodigoOtp: '',
+                    EsReenvioCodigoOtp: 1,
+                };
+                sendRequestReenviarCodigoOtp(model);
+            }
+        }
+        
+        function validarCodigoOtp() {
+            //$("#btn_Aceptar").prop("disabled", true);
+            $("#btn_Reenviar").prop("disabled", true);
+            $("#btn_ValidarOtp").prop("disabled", true);            
+
+            if ($("#Usuario").val() == "") {
+                mostrarAlerta("Debe ingresar su nombre de Usuario.");
+                $("#Usuario").focus();
+                $("#btn_Reenviar").removeAttr('disabled');
+                $("#btn_ValidarOtp").removeAttr('disabled');
+                return false;
+            }
+            if ($("#Password").val() == "") {
+                mostrarAlerta("Debe ingresar su Password.");
+                $("#Password").focus();
+                $("#btn_Reenviar").removeAttr('disabled');
+                $("#btn_ValidarOtp").removeAttr('disabled');
+                return false;
+            }
+
+            if ($("#codigoOtp").val() == "") {
+                mostrarAlerta("Debe ingresar el código de verificación.");
+                $("#codigoOtp").focus();
+                $("#btn_Reenviar").removeAttr('disabled');
+                $("#btn_ValidarOtp").removeAttr('disabled');
+                return false;
+            }
+
+            if ($("#codigoOtp").val() != "" && $("#codigoOtp").val().length !== 6) {
+                mostrarAlerta("El código de verificación debe tener 6 dígitos.");
+                $("#codigoOtp").focus();
+                $("#btn_Reenviar").removeAttr('disabled');
+                $("#btn_ValidarOtp").removeAttr('disabled');
+                return false;
+            }
+
+            if ($("#hiddenIdRequestOtp").val() == "") {
+                mostrarAlerta("Debe haber solicitado un código de verificación.");
+                $("#btn_Reenviar").removeAttr('disabled');
+                $("#btn_ValidarOtp").removeAttr('disabled');
+                return false;
+            }
+            
+            var usuario = $("input#Usuario").val();
+            var password = $("input#Password").val();
+            var codigoOtp = $("#codigoOtp").val(); // $("input#CodigoOtp").val();
+            var idRequestOtp = $("#hiddenIdRequestOtp").val();
+            //console.log("validarCodigoOtp.idRequestOtp ->", idRequestOtp);
+            
+            if (bReCaptcha == "1") {
+                var tokenCaptcha = grecaptcha.getResponse();
+
+                //if (tokenCaptcha.length === 0) {
+                //    mostrarAlerta("Debe completar el Captcha.");
+                //    $("#btn_Reenviar").removeAttr('disabled');
+                //    $("#btn_ValidarOtp").removeAttr('disabled');
+                //    return false;
+                //}
+
+                var model = {
+                    Usuario: usuario.trim(),
+                    Password: password.trim(),
+                    Publica: ipPublica,
+                    CodigoOtp: codigoOtp,
+                    IdRequestOtp: idRequestOtp,
+                };
+                sendRequestValidarCodigoOtp(model, tokenCaptcha);
+            } else {
+                var model = {
+                    Usuario: usuario.trim(),
+                    Password: password.trim(),
+                    Publica: ipPublica,
+                    Key: '',
+                    Captcharesponse: '',
+                    CodigoOtp: codigoOtp,
+                    IdRequestOtp: idRequestOtp,
+                };
+                sendRequestValidarCodigoOtp(model);
+            }
+        }
+
+        function sendRequestReenviarCodigoOtp(model, tokenCaptcha) {
+            $.ajax({
+                url: "/Home/ReenviarCodigoOtp",
+                type: "POST",
+                data: {
+                    sData: validarFormato(JSON.stringify(model)),
+                    sTokenCaptcha: tokenCaptcha
+                },
+                dataType: "json",
+                beforeSend: function() {
+                    $("#loader").show();
+                },
+                success: function(data) {
+                    if (data) {
+                        var arrSalida = data.mensajes.split('|');
+                        var mens = arrSalida[0];
+                        var pwd_valor = data.FlagPwdActualizada;
+                        var reenvioCodigoOtp = data.ReenvioCodigoOtp;
+                        var IdRequestOtp = data.IdRequestOtp;
+                        var reiniciarPassword = data.ReiniciarPassword;
+                        //console.log("Reenviar -> reenvioCodigoOtp", reenvioCodigoOtp);
+                        //console.log("Reenviar -> IdRequestOtp", IdRequestOtp);
+                        //console.log("Reenviar -> data.mensajes", data.mensajes);
+                        //console.log("Reenviar -> data.TiempoValOtp", data.TiempoValOtp);
+                        //console.log("Reenviar -> reiniciarPassword", reiniciarPassword);
+
+                        if (reenvioCodigoOtp === "1") {
+                            $("#hiddenIdRequestOtp").val('');
+                            $("input#Usuario").attr('disabled', 'disabled');
+                            $("input#Password").attr('disabled', 'disabled');
+                            $("#loader").hide();                            
+                            $("#btn_ValidarOtp").removeAttr('disabled');
+                            $("#hiddenIdRequestOtp").val(IdRequestOtp);
+                            $("#hiddenTiempoValOtp").val(data.TiempoValOtp);
+
+                            iniciarTimer();
+                            //mostrarAlerta('Reenvió del código de verificación con éxito');
+                            mostrarAlerta(mens);
+                        } else { 
+                            $("#loader").hide();
+                            //mostrarAlerta('Estimado usuario, se presenta problemas con el reenvío del código de verificación.', '');
+                            mostrarAlerta(mens);
+                            $("#btn_ValidarOtp").removeAttr('disabled');
+                            if (reiniciarPassword === "1") {
+                                $("#cerrarValidarOtp").click();
+                            }
+                        }
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error("Error:", error);
+                    console.error("status:", status);
+                    mostrarAlerta('Estimado usuario, se presenta problemas con el reenvío del código de verificación.');
+                    $("#loader").hide();
+                    $("#btn_ValidarOtp").removeAttr('disabled');
+                }
+            });
+        }
+
+        function sendRequestValidarCodigoOtp(model, tokenCaptcha)
+        {
+            $.ajax({
+                url: "/Home/ValidarCodigoOtp",
+                type: "POST",
+                data: {
+                    sData: validarFormato(JSON.stringify(model)),
+                    sTokenCaptcha: tokenCaptcha
+                },
+                dataType: "json",
+                beforeSend: function() {
+                    $("#loader").show();
+                },
+                success: function(data) {
+                    if (data) {
+                        //console.log("ValidarCodigoOtp -> data.mensajes", data.mensajes);
+                        var arrSalida = data.mensajes.split('|');
+                        var mens = arrSalida[0];
+                        var pwd_valor = data.FlagPwdActualizada;
+                        var reiniciarPassword = data.ReiniciarPassword;
+
+                        if (mens === "OK_OTP") {                             
+                            $("#btn_Aceptar").removeAttr('disabled');
+                            $("#btn_ValidarOtp").removeAttr('disabled');
+                            if (data.VistaListadoVentas == 1) {
+                                var urlVenta = "/Ventas/ListarVentas";
+                                window.location.href = urlVenta;
+                            } else if (data.VistaPlanilla == 1) {
+                                var urlPlanilla = "/Planilla";
+                                window.location.href = urlPlanilla;
+                            } else {
+                                var urlHome = "/Home/Vista";
+                                window.location.href = urlHome;
+                            }                            
+                        } else {
+                            $("#loader").hide();
+                            $("#codigoOtp").val('');
+                            $("#btn_ValidarOtp").removeAttr('disabled');
+                            //mostrarAlerta('Estimado usuario, el código de verificación es incorrecto.');
+                            mostrarAlerta(mens);
+                            if (reiniciarPassword === "1") {
+                                $("#cerrarValidarOtp").click();
+                            }
+                        }
+                    }
+                },
+                error: function(xhr, status, error) {
+                    mostrarAlerta('Estimado usuario, se presenta problemas con la validación del código de verificación.');
+                    $("#loader").hide();
+                    $("input#Usuario").removeAttr('disabled');
+                    $("input#Password").removeAttr('disabled');
+                    $("#btn_ValidarOtp").removeAttr('disabled');
+                    $("#cerrarValidarOtp").click();
+                }
+            });
+        }
+
+        let intervalId = null;
+        function iniciarTimer() {
+
+            if (intervalId) {
+                clearInterval(intervalId);
+            }
+
+            const timerElement = document.getElementById("timer").querySelector("label");
+            let tiempo = $("#hiddenTiempoValOtp").val();
+            
+            var textoCabecera_1 = document.getElementById("textoCabecera_1").querySelector("label");
+            var textoCabecera_2 = document.getElementById("textoCabecera_2").querySelector("label");
+            var textoCabecera_3 = document.getElementById("textoCabecera_3").querySelector("label");
+
+            textoCabecera_1.textContent = $("#hiddenModalOtp1").val();
+            textoCabecera_2.textContent = $("#hiddenModalOtp3").val();
+            textoCabecera_3.textContent = $("#hiddenModalOtp2").val();
+            
+            intervalId = setInterval(function() { //const intervalo = setInterval(function() {
+                let minutos = Math.floor(tiempo / 60);
+                let segundos = tiempo % 60;
+
+                // Formato con ceros a la izquierda
+                let tiempoFormateado = minutos + ':' + (segundos < 10 ? '0' : '') + segundos;
+                timerElement.textContent = 'Puedes reenviar el código en ' + tiempoFormateado;
+
+                tiempo--;
+
+                if (tiempo < 0) {
+                    //clearInterval(intervalo);
+                    clearInterval(intervalId);
+                    intervalId = null;
+                    timerElement.innerHTML = '<a href="#" onclick="reenviarCodigoOtp()" style="color: #FF6A39">Reenviar Código Verificación</a>';
+                }
+            }, 1000);
+        }
+        
+    </script>
+    <style type="text/css">
+        #timer label {
+            color: #FF6A39;
+        }
+        .bootstrap-dialog {
+            z-index: 2000 !important;
+        }
+
+        .bootstrap-dialog .modal-backdrop {
+            z-index: 1999 !important;
+        }
+    </style>
+
+    <!DOCTYPE HTML>
+    <html class="full" onkeypress="javascript:presionaEnter();">
+    <head>
+
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=9">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="description" content="La Positiva">
+        <meta name="author" content="La Positiva">
+        <title>SOAT en Línea - Inicio de Sesión</title>
+
+        <link href="/Content/plugins/Font-Awesome/css/font-awesome.css?v=2000" rel="stylesheet" />
+        <link href="/Content/Bootstrap/bootstrap.min.css?v=1000" rel="stylesheet" />
+        <link href="/Content/login.css?v=2002" rel="stylesheet" />
+        <link href="/Content/Bootstrap/bootstrap.dialog.css?v=1000" rel="stylesheet" />
+        <link href="/Content/spinner.css?v=1" rel="stylesheet" />
+    </head>
+    <body style="background-color: transparent;margin-top: 25px;">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-2 col-md-3 col-sm-12 col-xs-12">
+                        <img src="/Images/lapositiva_logo.png" alt="La Positiva">
+                </div>
+                <!--<div class="col-lg-10 col-md-9 col-sm-12 col-xs-12" style="font-size:35px;text-align: left;color: white; font-style: italic; font-weight: bold;">
+                    <img src="~/Images/texto_soat.png" class="img-responsive" alt="La Positiva">
+                </div>-->
+            </div>
+            <div class="row formTop">
+                
+                <div class="titulo_login">SOAT en Línea</div>
+                <form class="form-horizontal" role="form">
+                    <input name="__RequestVerificationToken" type="hidden" value="2tLBfQLibha8LzLpBiUj_zUyeQnnzHug8Qu0ZbGAe6cHre0m_Yt89rQVVoCy1xicKxAOAVx5tkMSnCJeJAYDho6qGt2Pvt9cYw_8_rd-Qs41" />
+                    <div class="form-group">
+                        <div class="col-lg-12 subtitulo_login">
+                            Formulario de Acceso al Sistema
+                        </div>
+                    </div>
+                    <div class="form-group" style="padding-top:15px;">
+                        <label for="inputType" class="col-lg-2 col-md-1 col-sm-2 col-xs-12  control-label-login">Usuario</label>
+                        <div class="col-lg-3 col-md-4 col-sm-4 col-xs-7 col-lg-offset-0 col-md-offset-1 col-sm-offset-0 col-xs-offset-0">
+                            <input autocomplete="off" class="form-control-login input-sm" id="Usuario" name="Usuario" onkeypress="javascript:validakeyespacioblanco();" type="text" value="" />
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="inputType" class="col-lg-2 col-md-1 col-sm-2 col-xs-12 control-label-login">Contraseña</label>
+                        <div class="col-lg-3 col-md-4 col-sm-4 col-xs-7 col-lg-offset-0 col-md-offset-1 col-sm-offset-0 col-xs-offset-0">
+                            <input autocomplete="off" class="form-control-login input-sm" id="Password" name="Password" onkeypress="javascript:validakeyespacioblanco();" style="-webkit-text-security: disc;" type="password" />
+                        </div>
+                    </div>                    
+                    <div class="g-recaptcha" data-sitekey="6Ldp8sYqAAAAANjvn74GvxwBi04CcnELGnvUhMBp"></div>
+                    <div class="form-group">
+                        <label for="inputType" class="col-lg-2 col-md-1 col-sm-2 col-xs-12 control-label-login" style="font-size:15px;color: white;"></label>
+                    </div>
+                    <div class="form-group">
+                        <div class="col-lg-10" style="text-align:left">
+                            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                            <a href="#" rel="noopener noreferrer" onclick="recuperarContrasena();" style="text-decoration: underline;">Recuperar contraseña</a>
+                            &nbsp;&nbsp;&nbsp;&nbsp;<input type="button" id="btn_Aceptar" class="btn_Aceptar" value="Aceptar" onclick="logueo();" />
+                        </div>                        
+                    </div>
+                    <div class="form-group" id="trValidarCodigoOtp" style="display:none; ">
+                        <div class="col-lg-10" style="text-align:left">
+                            <input type="hidden" name="hiddenIdRequestOtp" id="hiddenIdRequestOtp" />
+                            <input type="hidden" name="hiddenModalOtp1" id="hiddenModalOtp1" />
+                            <input type="hidden" name="hiddenModalOtp2" id="hiddenModalOtp2" />
+                            <input type="hidden" name="hiddenModalOtp3" id="hiddenModalOtp3" />
+                            <input type="hidden" name="hiddenTiempoValOtp" id="hiddenTiempoValOtp" />                            
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <div class="row">
+                <footer class="footer">
+                    <input type="hidden" id="divpub" value="MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAn0TwXN4Xy+uVWIN+jYxkBrR428R9W8bJ46fF62dAR4ATU2wOVQRmYNl2b46wVbPdMUxEgOpARFFuPGcpARityOkD+Twd+Z+itkkP5hEIyfTz/hW2oaUS8KVsMJ3RjKkw6wgRARMeYVTTtxJtpBQLWpNubxsCjkpoViNb0hWSkiZWrKZEhv2rxvxVZxkBXJh6FzDydy3Ew4p7nGJoBtSbyBTFjYllJLQppJhPOI6xOmaEK91EQeiUvdEdI4+7wgp1Sp8TEuLriXIVGlRzjpMzixOfB6VdKpxF/yhjys4y2s+bqc9vyJKri/XzvLrEVOjW0GEDLSi/J7p6AVB29wO3JwIDAQAB" />
+                    <p>Copyright La Positiva © 2016  - All Rights Reserved</p>
+                </footer>
+            </div>
+        </div>
+
+        <div class="modal fade modalalertastop" id="ModalMensaje" tabindex="-1" role="dialog" data-backdrop="static" data-backdrop="static" aria-labelledby="myModalLabel" aria-hidden="true">
+            <div class="modal-dialog modalalertasancho">
+                <div class="modal-content">
+
+                    <div class="modal-header modal_sel_header">
+                        <button type="button" class="close x_sel" data-dismiss="modal" aria-hidden="true">&times;</button>
+                        <div class="icono_sign">
+
+                        </div>
+
+                    </div>
+                    <div class="modal-body modal_sel_body" style="overflow:hidden">
+                        <div id="mensajeAlert" class="text-center">
+
+                        </div>
+                    </div>
+                    <div class="modal-footer modal_sel_footer">
+                        <button type="button" class="btn btn-principal" data-dismiss="modal"><i class="icono_check"></i>Aceptar </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal" id="verRecuperarClave">
+            <div class="modal-dialog" id="RecuperarClave">
+            </div>
+        </div>
+
+        <div class="modal-body">
+            <div class="col-lg-2">
+                <div class="modal fade align_center" id="verCambiarClaveupd" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+                    <div id="CambiarClaveupd"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal fade"
+             id="validarOtpParam"
+             tabindex="-1"
+             role="dialog"
+             data-bs-backdrop="static"
+             data-bs-keyboard="false"
+             aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header titulo_pop_sel">
+                        <h4 class="modal-title" id="H">Valida tu identidad</h4>
+                        <button type="button" id="cerrarValidarOtp" class="btn-close ms-auto" data-bs-dismiss="modal" aria-hidden="true" aria-label="Cerrar"></button>
+                    </div>                    
+                    <div class="modal-body">
+                        <div class="panel panel-default">
+                            <div class="panel-body">
+                                <div class="row form-group margin-bottom_0">
+                                    <div class="form-group col-lg-1"></div>
+                                    <div class="form-group col-lg-10 text-center" id="textoCabecera_1">
+                                        <label for="disabledSelect2" class="w-100"></label>
+                                    </div>
+                                    <div class="form-group col-lg-1"></div>
+                                </div>
+                                <div class="row form-group margin-bottom_0">
+                                    <div class="form-group col-lg-3"></div>
+                                    <div class="form-group col-lg-6 text-center mx-auto" id="textoCabecera_2">
+                                        <label for="disabledSelect2" class="w-100 fw-bold"></label>
+                                    </div>
+                                    <div class="form-group col-lg-3"></div>
+                                </div>
+                                <div class="row form-group margin-bottom_0">
+                                    <div class="form-group col-lg-12 text-center mx-auto" id="textoCabecera_3">
+                                        <label for="disabledSelect2" class="w-100"></label>
+                                    </div>
+                                </div>
+                                <div class="row form-group margin-bottom_0" style="height: 40px;">
+                                    <div class="form-group col-lg-12 text-center mx-auto">
+                                    </div>
+                                </div>
+                                <div class="row form-group margin-bottom_0">
+                                    <div class="form-group col-lg-2"></div>
+                                    <div class="form-group col-lg-8 d-flex justify-content-center mx-auto">
+                                        <input type="text" id="codigoOtp" maxlength="6" onkeypress="return validakeyOnlyNumbers(event)" class="form-control text-center" placeholder="Ingrese el código de verificación" style="max-width: 300px;" />
+                                    </div>
+                                    <div class="form-group col-lg-2"></div>
+                                </div>
+                                <div class="row form-group margin-bottom_0" style="height: 40px;">
+                                    <div class="form-group col-lg-12 text-center mx-auto">
+                                    </div>
+                                </div>
+                                <div class="row form-group margin-bottom_0">
+                                    <div class="form-group col-lg-3"></div>
+                                    <div class="form-group col-lg-6 text-center mx-auto">
+                                        <label for="disabledSelect2" class="w-100 fw-bold">¿Quieres reenviar el código?</label>
+                                    </div>
+                                    <div class="form-group col-lg-3"></div>
+                                </div>
+                                <div class="row form-group margin-bottom_0">
+                                    <div class="form-group col-lg-3"></div>
+                                    <div class="form-group col-lg-6 text-center mx-auto" id="timer">
+                                        <label for="disabledSelect2" class="w-100 fw-bold"></label>
+                                    </div>
+                                    <div class="form-group col-lg-3"></div>
+                                </div>
+                                <div class="row form-group margin-bottom_0">
+                                    <div class="form-group col-lg-1"></div>
+                                    <div class="form-group col-lg-10 text-center">
+                                        <input type="button" id="btn_ValidarOtp" class="btn_Aceptar" value="Validar código" onclick="validarCodigoOtp();" />
+                                    </div>
+                                    <div class="form-group col-lg-1"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal fade" id="alertaModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content text-center p-4">
+                    <img src="../Images/iconos/color/icono-alerta.png" alt="" style="width: 50px;">
+                    <h5 class="mt-3">Alerta</h5>
+                    <p id="mensajeAlerta" class="mt-2"></p>
+                    <button class="btn btn-warning mt-3" data-bs-dismiss="modal">Aceptar</button>
+                </div>
+            </div>
+        </div>
+        
+        <script src="/Scripts/Tools/jquery-3.6.1.min.js?v=1000"></script>
+        <script src="/Scripts/Tools/bootstrap.bundle.min.js?v=1000"></script>
+        <script src="/Scripts/Tools/bootstrap.dialog.js?v=1000"></script>
+        <script src="/Scripts/common/jsencrypt.min.js?v=1000"></script>
+        
+            <script src="https://www.google.com/recaptcha/api.js?hl=es" async defer></script>
+        <script>
+            $(document).ready(function () {
+                var intentos = '5';
+
+                $.getJSON(ServiceIpp, function (data) {
+                    ipPublica = data.ip;
+                })
+
+                $("#Usuario").focus();
+
+                var bLocked = '';
+                if (bLocked === '1') {
+                    alertValida('');
+                }
+
+                $("#left").tooltip({
+                    placement: "bottom",
+                    title: "Recuerde que tiene un máximo de " + intentos + " intentos de logueo antes de que su cuenta sea bloqueada"
+                });
+
+                $('#validarOtpParam').on('shown.bs.modal', function () {
+                    iniciarTimer();
+                });
+
+                $('#validarOtpParam').on('hidden.bs.modal', function () {
+                    if (intervalId) {
+                        clearInterval(intervalId);
+                        intervalId = null;
+                    }                    
+                    const timerElement = document.getElementById("timer").querySelector("label");
+                    timerElement.textContent = '';
+
+                    //console.log("cerrar modal");
+                    $("#Usuario").val('');
+                    $("#Password").val('');
+                    $("#hiddenIdRequestOtp").val('');
+                    $("#btn_Aceptar").removeAttr('disabled');
+                });
+
+                $("#codigoOtp").on("input", function () {
+                    this.value = this.value.replace(/\D/g, '').slice(0, 6);
+                });
+
+            });
+
+            $.ajaxPrefilter(function (options, originalOptions, jqXHR) {
+                if (options.type.toUpperCase() === "POST") {
+                    $("#TokenHidden").remove();
+                    var token = $("input[name^=__RequestVerificationToken]").first();
+                    if (!token.length) return;
+                    var tokenName = token.attr("name");
+
+                    if (options.contentType.indexOf('application/json') === 0) {
+                        options.url += ((options.url.indexOf("?") === -1) ? "?" : "&") + token.serialize();
+                    } else if (typeof options.data === 'string' && options.data.indexOf(tokenName) === -1) {
+                        options.data += (options.data ? "&" : "") + token.serialize();
+                    }
+                }
+            });
+
+            function validarFormato(a) {
+                var encrypt = new JSEncrypt();
+                encrypt.setPublicKey($("#divpub").val());
+                var result = encrypt.encrypt(a);
+                return result;
+            }
+            
+        </script>
+    </body>
+    <div id="loader" style="display: none;">
+        <div class="overlay" style="z-index: 2000;"></div>
+        <div class="spinner" style="z-index: 2000;"></div>
+    </div>
+    <div id="alertaPersonalizada" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 2000;">
+        <div class="overlay" style="position: absolute; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 2001;"></div>
+
+        <div class="modal-dialog-custom" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 2002; width: 90%; max-width: 500px; background: #fff; border-radius: 6px; box-shadow: 0 0 15px rgba(0,0,0,0.3);">
+            <div class="modal-header-custom" style="padding: 1rem; border-bottom: 1px solid #dee2e6; background-color: #6F79BD !important;">
+                <h5 class="modal-title-custom" style="margin: 0; color: #fff; font-size: 16px; ">Alerta</h5>
+            </div>
+            <div class="modal-body-custom" style="padding: 1.5rem;">
+                <div style="display: flex; align-items: center;">
+                    <img src="../Images/iconos/color/icono-alerta.png" alt="Alerta" style="width: 40px; height: 40px; margin-right: 1rem;">
+                    <span id="mensajeAlertaPersonalizada" class="error-msg" style="font-size: 1rem; color: #212529; font-size: 14px">Mensaje de alerta</span>
+                </div>
+            </div>
+            <div class="modal-footer-custom" style="padding: 1rem; border-top: 1px solid #dee2e6; text-align: right; margin: calc(var(--bs-modal-footer-gap) * .5)">                
+                <button class="btn btn-principal" onclick="ocultarAlertaPersonalizada()">
+                    <span class="width: 17px;height: 17px; background: url(../Images/iconos/blanco/icono_check.png) no-repeat;display: inline-block;vertical-align: top;">Aceptar</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+</html>

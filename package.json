@@ -1,0 +1,18 @@
+{
+  "name": "lapositiva-soat",
+  "version": "1.0.0",
+  "description": "Sistema SOAT La Positiva Local - Agencia Tacna",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [
+    "soat",
+    "lapositiva"
+  ],
+  "author": "Agencia Tacna - Hugo Chura",
+  "license": "ISC",
+  "dependencies": {
+    "pg": "^8.23.1"
+  }
+}

@@ -1,0 +1,575 @@
+const http = require('http');
+const https = require('https');
+const fs = require('fs');
+const path = require('path');
+const url = require('url');
+
+const BASE_DIR = __dirname;
+const ENV_FILE = path.join(BASE_DIR, '.env');
+const DB = require('./db');
+
+// Cargar variables desde archivo .env y process.env
+function leerConfig() {
+    const cfg = {
+        puerto: 3000,
+        tokenYupay: process.env.YUPAY_TOKEN || '',
+        cookieLaPositiva: process.env.LAPOSITIVA_COOKIE || '',
+        databaseUrl: process.env.DATABASE_URL || '',
+        timeoutMs: 10000
+    };
+
+    try {
+        if (fs.existsSync(ENV_FILE)) {
+            const lines = fs.readFileSync(ENV_FILE, 'utf-8').split(/\r?\n/);
+            for (const line of lines) {
+                const trimmed = line.trim();
+                if (!trimmed || trimmed.startsWith('#')) continue;
+                const eqIdx = trimmed.indexOf('=');
+                if (eqIdx === -1) continue;
+                const key = trimmed.substring(0, eqIdx).trim();
+                let val = trimmed.substring(eqIdx + 1).trim();
+                if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+                    val = val.substring(1, val.length - 1);
+                }
+                if (key === 'PORT' || key === 'PUERTO') cfg.puerto = parseInt(val, 10) || 3000;
+                if (key === 'YUPAY_TOKEN' || key === 'TOKEN_YUPAY') cfg.tokenYupay = val;
+                if (key === 'LAPOSITIVA_COOKIE' || key === 'COOKIE_LAPOSITIVA') cfg.cookieLaPositiva = val;
+                if (key === 'DATABASE_URL' || key === 'POSTGRES_URL') cfg.databaseUrl = val;
+                if (key === 'TIMEOUT_MS') cfg.timeoutMs = parseInt(val, 10) || 10000;
+            }
+        }
+    } catch (e) {
+        console.error('[ENV] Error leyendo archivo .env:', e.message);
+    }
+
+    return cfg;
+}
+
+function guardarConfig(cfg) {
+    try {
+        let current = '';
+        if (fs.existsSync(ENV_FILE)) {
+            current = fs.readFileSync(ENV_FILE, 'utf-8');
+        } else {
+            current = '# Configuración del Sistema SOAT La Positiva Local\nPORT=3000\nYUPAY_TOKEN=\nLAPOSITIVA_COOKIE=\nDATABASE_URL=\nTIMEOUT_MS=10000\n';
+        }
+
+        const updateKey = (text, key, val) => {
+            const regex = new RegExp(`^${key}=.*$`, 'm');
+            if (regex.test(text)) {
+                return text.replace(regex, `${key}=${val}`);
+            } else {
+                return text + (text && !text.endsWith('\n') ? '\n' : '') + `${key}=${val}\n`;
+            }
+        };
+
+        let updated = current;
+        if (cfg.puerto !== undefined) updated = updateKey(updated, 'PORT', cfg.puerto);
+        if (cfg.tokenYupay !== undefined) updated = updateKey(updated, 'YUPAY_TOKEN', cfg.tokenYupay);
+        if (cfg.cookieLaPositiva !== undefined) updated = updateKey(updated, 'LAPOSITIVA_COOKIE', cfg.cookieLaPositiva);
+        if (cfg.databaseUrl !== undefined) updated = updateKey(updated, 'DATABASE_URL', cfg.databaseUrl);
+        if (cfg.timeoutMs !== undefined) updated = updateKey(updated, 'TIMEOUT_MS', cfg.timeoutMs);
+
+        fs.writeFileSync(ENV_FILE, updated, 'utf-8');
+        console.log('[ENV] Archivo .env actualizado correctamente.');
+        return true;
+    } catch (e) {
+        console.error('[ENV] Error guardando archivo .env:', e.message);
+        return false;
+    }
+}
+
+// Helper para parsear cookies de la solicitud
+function parsearCookies(req) {
+    const list = {};
+    const rc = req.headers.cookie;
+    if (rc) {
+        rc.split(';').forEach(cookie => {
+            const parts = cookie.split('=');
+            list[parts.shift().trim()] = decodeURI(parts.join('='));
+        });
+    }
+    return list;
+}
+
+// Mapa de tipos MIME
+const MIME_TYPES = {
+    '.html': 'text/html; charset=utf-8',
+    '.css': 'text/css; charset=utf-8',
+    '.js': 'application/javascript; charset=utf-8',
+    '.json': 'application/json; charset=utf-8',
+    '.png': 'image/png',
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.gif': 'image/gif',
+    '.svg': 'image/svg+xml',
+    '.ico': 'image/x-icon',
+    '.woff': 'font/woff',
+    '.woff2': 'font/woff2',
+    '.ttf': 'font/ttf',
+    '.eot': 'application/vnd.ms-fontobject'
+};
+
+function normalizarPlaca(p) {
+    if (!p) return "";
+    const clean = p.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+    if (clean.length === 6) {
+        if (/^\d{4}[A-Z0-9]{2}$/.test(clean)) {
+            return clean.substring(0, 4) + '-' + clean.substring(4);
+        }
+        return clean.substring(0, 3) + '-' + clean.substring(3);
+    }
+    return p.toUpperCase();
+}
+
+function esPlacaMoto(p) {
+    if (!p) return false;
+    const clean = p.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+    if (/^\d{4}[A-Z0-9]{2}$/.test(clean)) return true;
+    if (/^\d{3}[A-Z0-9]{2}$/.test(clean)) return true;
+    return false;
+}
+
+function detectarZonaPorPlaca(p) {
+    if (!p) return "TACNA";
+    const clean = p.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+    const l1 = clean.charAt(0);
+    const zonas = {
+        'Z': 'TACNA', 'V': 'AREQUIPA', 'X': 'CUSCO', 'Y': 'PUNO',
+        'A': 'LIMA', 'B': 'LIMA', 'C': 'LIMA', 'D': 'LIMA', 'F': 'LIMA',
+        'P': 'PIURA', 'M': 'LAMBAYEQUE', 'T': 'LA LIBERTAD', 'H': 'ANCASH',
+        'W': 'JUNIN', 'S': 'ICA'
+    };
+    return zonas[l1] || "TACNA";
+}
+
+// Consulta a Yupay.dev (SUNARP en vivo)
+function consultarYupay(placa, token, timeoutMs) {
+    return new Promise((resolve, reject) => {
+        const clean = placa.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+        const options = {
+            hostname: 'api.yupay.dev',
+            port: 443,
+            path: `/v1/plate/${encodeURIComponent(clean)}`,
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token.trim()}`,
+                'Accept': 'application/json',
+                'User-Agent': 'PositivaSOAT/1.0'
+            },
+            timeout: timeoutMs || 10000
+        };
+
+        const req = https.request(options, (res) => {
+            let data = '';
+            res.on('data', (chunk) => { data += chunk; });
+            res.on('end', () => {
+                try {
+                    const json = JSON.parse(data);
+                    resolve({ statusCode: res.statusCode, data: json });
+                } catch (e) {
+                    resolve({ statusCode: res.statusCode, raw: data });
+                }
+            });
+        });
+
+        req.on('timeout', () => {
+            req.destroy();
+            reject(new Error('TIMEOUT_YUPAY'));
+        });
+
+        req.on('error', (err) => {
+            reject(err);
+        });
+
+        req.end();
+    });
+}
+
+// Páginas protegidas que requieren sesión activa
+const PAGINAS_PROTEGIDAS = [
+    '/ventas.html',
+    '/ventas',
+    '/dashboard.html',
+    '/dashboard',
+    '/cotizacion.html',
+    '/cotizacion'
+];
+
+// Servidor principal
+const server = http.createServer(async (req, res) => {
+    // Headers CORS globales
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Requested-With, Authorization');
+
+    if (req.method === 'OPTIONS') {
+        res.writeHead(200);
+        res.end();
+        return;
+    }
+
+    const parsedUrl = url.parse(req.url, true);
+    let pathname = decodeURIComponent(parsedUrl.pathname);
+    const cookies = parsearCookies(req);
+    const sessionToken = cookies['soat_session'] || req.headers['authorization']?.replace('Bearer ', '');
+
+    // ==========================================
+    // 0. CONTROL DE AUTENTICACIÓN (LOGIN OBLIGATORIO)
+    // ==========================================
+    const esPaginaProtegida = PAGINAS_PROTEGIDAS.includes(pathname.toLowerCase());
+    if (esPaginaProtegida) {
+        const sesionValida = await DB.validarSesion(sessionToken);
+        if (!sesionValida) {
+            console.log(`[AUTH] Intento de acceso no autorizado a ${pathname}. Redirigiendo a /index.html`);
+            res.writeHead(302, { 'Location': '/index.html' });
+            res.end();
+            return;
+        }
+    }
+
+    // ==========================================
+    // 1. ENDPOINT: /api/login (Autenticación contra Base de Datos)
+    // ==========================================
+    if (pathname === '/api/login' && req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => { body += chunk; });
+        req.on('end', async () => {
+            try {
+                const data = JSON.parse(body);
+                const usuario = data.username || data.Usuario || '';
+                const password = data.password || data.Password || '';
+
+                const userAutenticado = await DB.autenticarUsuario(usuario, password);
+
+                if (userAutenticado) {
+                    const token = await DB.crearSesion(userAutenticado);
+                    console.log(`[AUTH] Inicio de sesión exitoso: ${userAutenticado.username} (${userAutenticado.nombreCompleto})`);
+
+                    // Establecer cookie HttpOnly de sesión
+                    res.writeHead(200, {
+                        'Content-Type': 'application/json',
+                        'Set-Cookie': `soat_session=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400`
+                    });
+                    res.end(JSON.stringify({
+                        success: true,
+                        mensaje: 'Bienvenido al sistema SOAT.',
+                        redirect: 'ventas.html',
+                        token: token,
+                        user: userAutenticado
+                    }));
+                } else {
+                    console.log(`[AUTH] Falló inicio de sesión para: "${usuario}"`);
+                    res.writeHead(401, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({
+                        success: false,
+                        mensaje: 'Usuario o contraseña incorrectos.'
+                    }));
+                }
+            } catch (e) {
+                res.writeHead(400, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: false, mensaje: 'Datos inválidos.' }));
+            }
+        });
+        return;
+    }
+
+    // ==========================================
+    // 2. ENDPOINT: /api/logout (Cerrar sesión)
+    // ==========================================
+    if ((pathname === '/api/logout' || pathname === '/Home/CerrarSesion') && (req.method === 'POST' || req.method === 'GET')) {
+        await DB.destruirSesion(sessionToken);
+        console.log('[AUTH] Sesión cerrada.');
+        res.writeHead(200, {
+            'Content-Type': 'application/json',
+            'Set-Cookie': 'soat_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT'
+        });
+        res.end(JSON.stringify({ success: true, redirect: 'index.html' }));
+        return;
+    }
+
+    // ==========================================
+    // 3. ENDPOINT: /api/session (Validar sesión activa)
+    // ==========================================
+    if (pathname === '/api/session') {
+        const sesionValida = await DB.validarSesion(sessionToken);
+        if (sesionValida) {
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ authenticated: true, user: sesionValida }));
+        } else {
+            res.writeHead(401, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ authenticated: false }));
+        }
+        return;
+    }
+
+    // ==========================================
+    // 4. ENDPOINT: /Ventas/ObtenerInformacionPlaca
+    // ==========================================
+    if (pathname === '/Ventas/ObtenerInformacionPlaca' || pathname === '/api/consultar-placa') {
+        const qPlaca = parsedUrl.query.pPlaca || parsedUrl.query.placa || '';
+        const placaNorm = normalizarPlaca(qPlaca);
+        const config = leerConfig();
+        const esMoto = esPlacaMoto(placaNorm);
+        const zonaDetectada = detectarZonaPorPlaca(placaNorm);
+
+        console.log(`\n[PROXY] >>> Solicitud de placa: "${qPlaca}" (Normalizada: "${placaNorm}")`);
+
+        // A. Consulta a YUPAY.DEV (SUNARP en vivo)
+        if (config.tokenYupay && config.tokenYupay.trim().length > 5) {
+            console.log('[PROXY] Consultando en vivo a Yupay.dev (SUNARP)...');
+            try {
+                const resYupay = await consultarYupay(placaNorm, config.tokenYupay, config.timeoutMs);
+                if (resYupay.statusCode === 200 && resYupay.data) {
+                    const y = resYupay.data;
+                    const vehY = y.vehiculo || y.data || y;
+
+                    const marcaY = vehY.marca || y.marca || "";
+                    const modeloY = vehY.modelo || y.modelo || "";
+                    const serieY = vehY.numSerie || vehY.serie || vehY.vin || vehY.numeroSerie || y.numSerie || y.serie || y.vin || "";
+                    const motorY = vehY.numMotor || vehY.numeroMotor || vehY.motor || y.numMotor || "";
+                    const anioY = String(vehY.anioFabricacion || vehY.anio || vehY.año || y.anioFabricacion || y.anio || y.año || "");
+                    const asientosY = String(vehY.numAsientos || vehY.asientos || vehY.numeroAsiento || y.numAsientos || (esMoto ? "2" : "5"));
+                    const claseY = vehY.clase || (esMoto ? "MOTO" : "AUTO");
+                    const tipoY = vehY.tipo || "";
+                    const categoriaY = vehY.categoria || (esMoto ? "L3" : "M1");
+                    const usoY = vehY.uso || "PARTICULAR";
+                    const colorY = vehY.color || "";
+                    const modeloEspY = tipoY || (colorY ? colorY + " " : "") + (vehY.carroceria || "STD");
+
+                    if (marcaY || serieY || modeloY) {
+                        console.log(`[PROXY] ¡Datos obtenidos de SUNARP vía Yupay.dev!: ${marcaY} ${modeloY} (${anioY}) Motor: ${motorY} Serie: ${serieY}`);
+
+                        const vehiculoConstruido = {
+                            placa: placaNorm,
+                            clase: claseY,
+                            marca: marcaY,
+                            modelo: modeloY,
+                            modeloEsp: modeloEspY,
+                            serie: serieY,
+                            anio: anioY,
+                            asientos: asientosY,
+                            uso: usoY,
+                            categoria: categoriaY,
+                            version: "STD",
+                            zona: zonaDetectada,
+                            formaPago: "Efectivo",
+                            moneda: "Soles",
+                            monto: esMoto ? "S/ 140.00" : "S/ 65.00",
+                            motor: motorY,
+                            color: colorY
+                        };
+
+                        // Auto-guardar en base de datos
+                        await DB.guardarVehiculo(vehiculoConstruido);
+
+                        const respuestaPositiva = {
+                            IsValid: true,
+                            Valid: true,
+                            estado: "OK",
+                            resultado: {
+                                CertificadosDTO: [{
+                                    VehiculoDTO: {
+                                        Placa: placaNorm,
+                                        DescripcionClase: claseY,
+                                        DescripcionMarca: marcaY,
+                                        DescripcionModelo: modeloY,
+                                        ModeloEspecifico: modeloEspY,
+                                        NumeroSerie: serieY,
+                                        NumeroMotor: motorY,
+                                        Anio: anioY,
+                                        NumeroAsiento: asientosY,
+                                        DescripcionUso: usoY,
+                                        DescripcionCategoria: categoriaY,
+                                        DescripcionVersion: "STD",
+                                        DescripcionZona: zonaDetectada
+                                    }
+                                }]
+                            },
+                            VehiculoDTO: vehiculoConstruido,
+                            origen: "YUPAY_SUNARP"
+                        };
+
+                        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+                        res.end(JSON.stringify(respuestaPositiva));
+                        return;
+                    }
+                } else {
+                    console.log(`[PROXY] Yupay respondió ${resYupay.statusCode}:`, resYupay.data?.error?.message || JSON.stringify(resYupay.data || ''));
+                }
+            } catch (errY) {
+                console.log('[PROXY] Error consultando Yupay.dev:', errY.message);
+            }
+        }
+
+        // B. Búsqueda en Base de Datos (PostgreSQL o Local)
+        const vehiculoLocal = await DB.obtenerVehiculo(placaNorm);
+        if (vehiculoLocal) {
+            console.log(`[PROXY] ¡Vehículo encontrado en Base de Datos!: ${vehiculoLocal.marca} ${vehiculoLocal.modelo}`);
+
+            const respuestaEstandar = {
+                IsValid: true,
+                Valid: true,
+                estado: "OK",
+                resultado: {
+                    CertificadosDTO: [{
+                        VehiculoDTO: {
+                            Placa: vehiculoLocal.placa,
+                            DescripcionClase: vehiculoLocal.clase,
+                            DescripcionMarca: vehiculoLocal.marca,
+                            DescripcionModelo: vehiculoLocal.modelo,
+                            ModeloEspecifico: vehiculoLocal.modeloEsp || "",
+                            NumeroSerie: vehiculoLocal.serie || "",
+                            Anio: vehiculoLocal.anio || "",
+                            NumeroAsiento: vehiculoLocal.asientos || "5",
+                            DescripcionUso: vehiculoLocal.uso || "PARTICULAR",
+                            DescripcionCategoria: vehiculoLocal.categoria || "M1",
+                            DescripcionVersion: vehiculoLocal.version || "STD",
+                            DescripcionZona: vehiculoLocal.zona || zonaDetectada
+                        }
+                    }]
+                },
+                VehiculoDTO: vehiculoLocal,
+                origen: "BASE_DE_DATOS"
+            };
+
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify(respuestaEstandar));
+            return;
+        }
+
+        // C. No encontrado
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({
+            IsValid: true,
+            Valid: true,
+            estado: "NO_ENCONTRADO",
+            placa: placaNorm,
+            mensaje: "Placa no encontrada. Ingrese los datos manualmente para guardarla.",
+            origen: "NINGUNO"
+        }));
+        return;
+    }
+
+    // ==========================================
+    // 5. ENDPOINT: Guardar vehículo
+    // ==========================================
+    if (pathname === '/api/guardar-vehiculo' && req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => { body += chunk; });
+        req.on('end', async () => {
+            try {
+                const veh = JSON.parse(body);
+                const ok = await DB.guardarVehiculo(veh);
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: ok }));
+            } catch (e) {
+                res.writeHead(400, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: e.message }));
+            }
+        });
+        return;
+    }
+
+    // ==========================================
+    // 6. ENDPOINT: Configuración (.env)
+    // ==========================================
+    if (pathname === '/api/config-sesion') {
+        if (req.method === 'POST') {
+            let body = '';
+            req.on('data', chunk => { body += chunk; });
+            req.on('end', () => {
+                try {
+                    const data = JSON.parse(body);
+                    const cfg = leerConfig();
+                    if (data.tokenYupay !== undefined) cfg.tokenYupay = data.tokenYupay.trim();
+                    if (data.cookieLaPositiva !== undefined) cfg.cookieLaPositiva = data.cookieLaPositiva.trim();
+                    if (data.databaseUrl !== undefined) cfg.databaseUrl = data.databaseUrl.trim();
+                    guardarConfig(cfg);
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({
+                        success: true,
+                        mensaje: 'Configuración guardada en .env',
+                        tieneYupay: Boolean(cfg.tokenYupay && cfg.tokenYupay.length > 5)
+                    }));
+                } catch (e) {
+                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ error: e.message }));
+                }
+            });
+            return;
+        } else {
+            const cfg = leerConfig();
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({
+                tieneYupay: Boolean(cfg.tokenYupay && cfg.tokenYupay.length > 5),
+                tokenYupayPreview: cfg.tokenYupay ? (cfg.tokenYupay.substring(0, 8) + '...' + cfg.tokenYupay.substring(cfg.tokenYupay.length - 4)) : '',
+                tienePostgres: Boolean(cfg.databaseUrl && cfg.databaseUrl.length > 5),
+                puerto: cfg.puerto || 3000
+            }));
+            return;
+        }
+    }
+
+    // ==========================================
+    // 7. SERVIDOR DE ARCHIVOS ESTÁTICOS
+    // ==========================================
+    let filePath = path.join(BASE_DIR, pathname === '/' ? 'index.html' : pathname);
+
+    if (!filePath.startsWith(BASE_DIR)) {
+        res.writeHead(403);
+        res.end('Acceso denegado');
+        return;
+    }
+
+    fs.stat(filePath, (err, stats) => {
+        if (!err && stats.isDirectory()) {
+            const indexCandidate = path.join(filePath, 'index.html');
+            if (fs.existsSync(indexCandidate)) {
+                filePath = indexCandidate;
+            } else if (fs.existsSync(filePath + '.html')) {
+                filePath += '.html';
+            }
+        } else if (err || !stats.isFile()) {
+            if (!path.extname(filePath) && fs.existsSync(filePath + '.html')) {
+                filePath += '.html';
+            } else {
+                res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+                res.end('Archivo no encontrado: ' + pathname);
+                return;
+            }
+        }
+
+        const ext = path.extname(filePath).toLowerCase();
+        const contentType = MIME_TYPES[ext] || 'application/octet-stream';
+
+        fs.readFile(filePath, (readErr, content) => {
+            if (readErr) {
+                res.writeHead(500, { 'Content-Type': 'text/plain' });
+                res.end('Error interno leyendo archivo');
+                return;
+            }
+            res.writeHead(200, { 'Content-Type': contentType });
+            res.end(content);
+        });
+    });
+});
+
+// Inicializar DB y luego escuchar
+const cfg = leerConfig();
+const PORT = cfg.puerto || 3000;
+
+DB.initDB(cfg.databaseUrl).then((dbStatus) => {
+    server.listen(PORT, '0.0.0.0', () => {
+        console.log('====================================================');
+        console.log('   SOAT LA POSITIVA - SISTEMA CON BASE DE DATOS');
+        console.log('   AGENCIA: TACNA - HUGO CHURA Y ASOCIADOS CORREDORES');
+        console.log('====================================================');
+        console.log(` Servidor activo en: http://localhost:${PORT}`);
+        console.log(` Base de datos: ${dbStatus.tipo} (${dbStatus.estado})`);
+        console.log(` Seguridad: Acceso protegido a ventas/dashboard.`);
+        console.log(` Usuario administrador inicial: admin / admin1`);
+        console.log(` Yupay API: ${cfg.tokenYupay ? 'SI (SUNARP en vivo)' : 'NO'}`);
+        console.log('====================================================\n');
+    });
+});

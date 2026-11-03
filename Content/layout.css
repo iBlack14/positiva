@@ -1,0 +1,293 @@
+@font-face {
+    font-family: 'Mirai_regular';
+    src: local('Mirai_regular'),
+         url('../fonts/mirai/mirai-regular-webfont.eot?#iefix') format('embedded-opentype'),
+         url('../fonts/mirai/mirai-regular-webfont.woff') format('woff'),
+         url('../fonts/mirai/mirai-regular-webfont.ttf') format('truetype'),
+         url('../fonts/mirai/mirai-regular-webfont.svg#Mirai_regular') format('svg');
+    font-weight: normal;
+    font-style: normal;
+}
+@font-face {
+    font-family: 'Mirai_medium';
+    src: local('Mirai_medium'),
+         url('../fonts/mirai/mirai-medium-webfont.eot?#iefix') format('embedded-opentype'),
+         url('../fonts/mirai/mirai-medium-webfont.woff') format('woff'),
+         url('../fonts/mirai/mirai-medium-webfont.ttf') format('truetype'),
+         url('../fonts/mirai/mirai-medium-webfont.svg#Mirai_medium') format('svg');
+    font-weight: normal;
+    font-style: normal;
+}
+@font-face {
+    font-family: 'Mirai_bold';
+    src: local('Mirai_bold'),
+         url('../fonts/mirai/mirai-bold-webfont.eot?#iefix') format('embedded-opentype'),
+         url('../fonts/mirai/mirai-bold-webfont.woff') format('woff'),
+         url('../fonts/mirai/mirai-bold-webfont.ttf') format('truetype'),
+         url('../fonts/mirai/mirai-bold-webfont.svg#Mirai_bold') format('svg');
+    font-weight: normal;
+    font-style: normal;
+} 
+@font-face {
+    font-family: 'Mirai_light';
+    src: url('../fonts/mirai/mirai-light-webfont.eot');
+    src: url('../fonts/mirai/mirai-light-webfont.eot?#iefix') format('embedded-opentype'),
+         url('../fonts/mirai/mirai-light-webfont.woff') format('woff'),
+         url('../fonts/mirai/mirai-light-webfont.ttf') format('truetype'),
+         url('../fonts/mirai/mirai-light-webfont.svg#mirai-lightuploaded_file') format('svg');
+    font-weight: normal;
+    font-style: normal;
+
+}
+@media (max-width: 480px) {
+	.overlay1 {
+	    display: none;
+	}
+}
+@media (max-width: 767px) {
+    .overlay3 {
+	display: none;
+    } 
+}
+@media (min-width: 768px) {
+}
+@media (min-width: 992px) {
+}
+@media (min-width: 1200px) {
+}
+
+body {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 12px;
+    margin-top: 5px;
+    margin-right: 0px;
+    margin-bottom: 0px;
+    margin-left: 0px;
+}
+
+h5, .h5 {
+    font-size: 11px;
+    color: #333;
+}
+
+.paddin-botom-top_10px {
+    padding-bottom: 0px;
+    padding-top: 0px;
+}
+
+.btn-primary:hover, .btn-primary:focus, .btn-primary:active, .btn-primary.active, .open .dropdown-toggle.btn-primary {
+    color: #ffffff;
+    background-color: #0E2C46;
+    border-color: #0E2C46;
+}
+
+.btn-primary {
+    color: #ffffff;
+    background-color: #0E2C46;
+    border-color: #0E2C46;
+}
+
+
+ .navbar {
+    margin-bottom: 0;
+    height: 13%;
+    /*border: 1px solid rgb(236, 236, 236);
+    border-bottom: 2px solid rgb(236, 236, 236);*/
+    /* Permalink - use to edit and share this gradient: http://colorzilla.com/gradient-editor/#1e5799+0,040535+40,0c073a+70,0c073a+70,0f0c59+99,0f0c59+99 */
+    
+}
+
+#menu > li > a {
+    position: relative;
+    display: block;
+    padding: 10px 15px;
+    color: #021B2F;
+    /* text-shadow: 0 1px 0 rgba(0, 0, 0, 0.5); */
+    border-top: 2px solid #073052;
+    border-right: 4px solid #333;
+}
+
+    #menu > li > a:hover, #menu > li > a:focus {
+        color: #fff;
+        text-decoration: none;
+        background-color: #0E2C46;
+        outline: none;
+    }
+
+#menu {
+    position: relative;
+    overflow: hidden;
+    /* background-color: #333; */
+    border-right: 1px solid #333;
+    border-left: 1px solid #333;
+    background-color: #f8f8f8;
+    border-bottom: 4px solid #333;
+    -webkit-box-shadow: 0 1px 0 rgba(255, 255, 255, 0.05);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.user-media {
+    /*border-right: 5px solid #333;*/
+    /* border-left: 4px solid #333;*/
+}
+
+.nav .open > a, .nav .open > a:hover, .nav .open > a:focus {
+    background-color: #2169A7;
+    border-color: #4BAECC;
+}
+		
+.btn-warning:hover, .btn-warning:focus, .btn-warning:active, .btn-warning.active, .open .dropdown-toggle.btn-warning {
+    color: #ffffff;
+    /* Permalink - use to edit and share this gradient: http://colorzilla.com/gradient-editor/#ffa84c+8,ff7b0d+24 */
+    background: #ffa84c; /* Old browsers */
+    background: -moz-linear-gradient(top, #ffa84c 8%, #ff7b0d 24%); /* FF3.6-15 */
+    background: -webkit-linear-gradient(top, #ffa84c 8%, #ff7b0d 24%); /* Chrome10-25,Safari5.1-6 */
+    background: linear-gradient(to bottom, #ffa84c 8%, #ff7b0d 24%); /* W3C, IE10+, FF16+, Chrome26+, Opera12+, Safari7+ */
+    filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#ffa84c', endColorstr='#ff7b0d', GradientType=0); /* IE6-9 */
+    border-color: rgb(216, 129, 4);
+}
+
+.btn-warning {
+    color: #ffffff;
+    /* Permalink - use to edit and share this gradient: http://colorzilla.com/gradient-editor/#ffa84c+8,ff7b0d+24 */
+    background: #ffa84c; /* Old browsers */
+    background: -moz-linear-gradient(top, #ffa84c 8%, #ff7b0d 24%); /* FF3.6-15 */
+    background: -webkit-linear-gradient(top, #ffa84c 8%, #ff7b0d 24%); /* Chrome10-25,Safari5.1-6 */
+    background: linear-gradient(to bottom, #ffa84c 8%, #ff7b0d 24%); /* W3C, IE10+, FF16+, Chrome26+, Opera12+, Safari7+ */
+    filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#ffa84c', endColorstr='#ff7b0d', GradientType=0); /* IE6-9 */
+    border-color: rgb(216, 129, 4);
+}
+
+
+.panel-default > .panel-heading {
+    font-family: 'Mirai_medium';
+    
+    font-size:12px;
+    color: white;
+    /* Permalink - use to edit and share this gradient: http://colorzilla.com/gradient-editor/#ffa84c+8,ff7b0d+24 */
+    background: #00CBC1; /* Old browsers */
+    border-color: #00CBC1;
+    padding: 6px 10px;
+    text-indent: 0px;
+    text-transform: uppercase;
+    /*border-color: #dddddd;*/
+}
+/*
+.box header {
+    background: red;
+    border-bottom: 1px solid #d4d4d4;
+}*/
+.Formato {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 12px;
+}
+
+.caption {
+    width: 100%;
+    bottom: .3rem;
+    position: absolute;
+}
+
+        
+.overlay1 {
+    color: #fff;
+    position: absolute;
+    z-index: 12;
+    top: 33%;
+    left: 0;
+    width: 100%;
+    text-align: right;
+    padding-right: 23%;
+}
+.overlay2 {
+    color: #fff;
+    position: absolute;
+    z-index: 12;
+    top: 29%;
+    left: 0;
+    width: 100%;
+    text-align: left;
+    padding-left: 40px;
+}
+
+/*#myheader{
+    width:100% !important;
+}*/
+.nav_sel{
+    font-family: 'Mirai_regular';
+    background-color:#FF6A39 !important;
+    width: 100%;height: 40px;  
+    padding-top: 3px; 
+    position:fixed !important;
+    right: 0;
+    left:0;
+    z-index:20;
+}
+.navbar-nav > li > a {
+    font-family: 'Mirai_regular';
+    padding-top: 13px;
+    padding-bottom: 15px;
+    text-transform:uppercase;
+    font-size:13px;
+    color:#fff !important;
+    padding: 13px 5px;
+}
+.nav_sel .navbar-right > li > a{
+    font-family: 'Mirai_light';
+    font-size:10px;
+    padding-top: 13px;
+    position:relative;
+    color:#fff;
+    padding-right:10px;
+}
+.nav_sel .navbar-right  li:first-child:before{
+    content:'';
+    width:1px;
+    height:20px;
+    background:white;
+    float:right;
+    margin-top: 11px;
+}
+.icono_usuario_login{
+    display:inline-block;
+    margin-top:-6px;
+    width:14px;
+    height:14px;
+}
+.navbar-default .navbar-nav>li>a:hover{
+    color:white;
+    font-style:normal;
+}
+#a_123{
+    font-family: 'Mirai_medium';
+    color:#606363 !important;
+    font-size:12px;
+
+}
+.panel-default{
+    border-color:#C0C0C0;
+}
+.titulo_login{
+     font-family: 'Mirai_bold';
+     font-size: 40px;
+     color: #606363;
+     margin-bottom:15px;
+}
+.overlay3 {
+    
+	position: absolute;
+    
+	z-index: 0;
+    
+	top: 0%;
+    
+	width: 100%;
+    
+	text-align: right;
+
+}
+
+.cierre-sesion {
+  padding-top: 65px;
+  background-color: #fff;
+}
