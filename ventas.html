@@ -682,7 +682,7 @@
             background: #ffffff;
             border-radius: 6px;
             width: 90%;
-            max-width: 440px;
+            max-width: 550px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.2);
             overflow: hidden;
         }
@@ -693,6 +693,18 @@
             padding: 10px 16px;
             font-size: 13px;
             font-family: 'Mirai_medium', sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .modal-alert-close {
+            border: 0;
+            background: transparent;
+            color: #465080;
+            font-size: 20px;
+            line-height: 1;
+            cursor: pointer;
         }
 
         .modal-alert-body {
@@ -700,7 +712,7 @@
             display: flex;
             align-items: center;
             gap: 15px;
-            font-size: 12px;
+            font-size: 15px;
             color: #333;
         }
 
@@ -708,6 +720,249 @@
             padding: 10px 16px;
             text-align: right;
             border-top: 1px solid #eee;
+        }
+
+        .modal-alert-ok {
+            min-width: 112px;
+            padding: 8px 20px;
+            border: 0;
+            border-radius: 24px;
+            background: #FF6A39;
+            color: #fff;
+            font-family: 'Mirai_medium', sans-serif;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .modal-alert-ok:hover {
+            background: #e55627;
+        }
+
+        .emision-review-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 2100;
+            padding: 18px;
+            background: rgba(0,0,0,0.55);
+            align-items: center;
+            justify-content: center;
+        }
+
+        .emision-review-modal.show {
+            display: flex;
+        }
+
+        .emision-review-box {
+            display: flex;
+            flex-direction: column;
+            width: min(760px, 100%);
+            max-height: 94vh;
+            overflow: hidden;
+            border-radius: 7px;
+            background: #fff;
+            box-shadow: 0 8px 28px rgba(0,0,0,0.32);
+        }
+
+        .emision-review-header {
+            display: flex;
+            flex: none;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 18px;
+            background: #6F79BD;
+            color: #fff;
+            font-size: 15px;
+        }
+
+        .emision-review-close {
+            border: 0;
+            background: transparent;
+            color: #fff;
+            font-size: 22px;
+            cursor: pointer;
+        }
+
+        .emision-review-content {
+            overflow: auto;
+            padding: 14px 18px;
+        }
+
+        .emision-review-section {
+            margin-bottom: 12px;
+            border: 1px solid #d5dadd;
+            border-radius: 4px;
+        }
+
+        .emision-review-section h3 {
+            margin: 0;
+            padding: 7px 10px;
+            background: #00CBC1;
+            color: #fff;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .emision-review-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px 18px;
+            padding: 12px;
+        }
+
+        .emision-review-item {
+            display: grid;
+            grid-template-columns: minmax(90px, 0.8fr) minmax(0, 1.2fr);
+            gap: 8px;
+            align-items: center;
+            min-height: 30px;
+            font-size: 11px;
+        }
+
+        .emision-review-item span:first-child {
+            color: #606363;
+        }
+
+        .emision-review-item span:last-child {
+            min-height: 26px;
+            overflow-wrap: anywhere;
+            padding: 6px 8px;
+            border: 1px solid #d0d0d0;
+            border-radius: 3px;
+            background: #e9e9e9;
+            color: #555;
+        }
+
+        .emision-review-actions {
+            display: flex;
+            flex: none;
+            justify-content: center;
+            gap: 16px;
+            padding: 12px 18px 16px;
+            border-top: 1px solid #eee;
+        }
+
+        .emision-review-actions button {
+            min-width: 112px;
+        }
+
+        .emision-action-icon {
+            width: 16px;
+            height: 16px;
+            margin-right: 5px;
+            vertical-align: -3px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 1.8;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .emision-result-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 2200;
+            padding: 16px;
+            background: rgba(0,0,0,0.68);
+            align-items: center;
+            justify-content: center;
+        }
+
+        .emision-result-modal.show {
+            display: flex;
+        }
+
+        .emision-result-box {
+            width: min(520px, 100%);
+            padding: 8px;
+            background: #fff;
+            box-shadow: 0 8px 28px rgba(0,0,0,0.35);
+        }
+
+        .emision-result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 10px;
+            color: #555;
+            border-bottom: 1px solid #ddd;
+            font-size: 13px;
+        }
+
+        .emision-result-close {
+            padding: 0;
+            border: 0;
+            background: transparent;
+            color: #e85c4a;
+            font-size: 21px;
+            font-weight: bold;
+            line-height: 1;
+            cursor: pointer;
+        }
+
+        .emision-result-content {
+            margin: 0 2px;
+            padding: 14px 12px;
+            border: 1px solid #ccc;
+            color: #555;
+            font-size: 11px;
+        }
+
+        .emision-result-message {
+            margin: 0 0 12px;
+            color: #555;
+        }
+
+        .emision-result-content p {
+            margin: 0 0 9px;
+        }
+
+        .emision-result-email {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            margin-top: 12px;
+        }
+
+        .emision-result-email input {
+            width: min(240px, 65%);
+            height: 27px;
+            padding: 4px 7px;
+            border: 1px solid #ccc;
+            border-radius: 2px;
+            font: inherit;
+        }
+
+        .emision-result-notice {
+            margin: 10px 2px 0;
+            color: #815d22;
+            font-size: 11px;
+        }
+
+        .emision-result-actions {
+            display: flex;
+            justify-content: flex-end;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 12px;
+            padding: 8px 2px 2px;
+            border-top: 1px solid #ddd;
+        }
+
+        .emision-result-actions button {
+            min-width: 105px;
+            padding: 6px 12px;
+            font-size: 11px;
+        }
+
+        @media(max-width:520px) {
+            .emision-review-modal { padding: 8px; }
+            .emision-review-box { max-height: 96vh; }
+            .emision-review-content { padding: 10px; }
+            .emision-review-grid { grid-template-columns: 1fr; gap: 4px; padding: 9px; }
+            .emision-review-actions { gap: 8px; padding: 10px; }
+            .emision-review-actions button { min-width: 0; padding-left: 12px; padding-right: 12px; }
         }
     
         /* Botón Yupay API y estilos del modal */
@@ -966,8 +1221,109 @@
                 </div>
             </div>
 
+            <div class="panel-form">
+                <div class="panel-header-teal">DATOS DEL CONTRATANTE</div>
+                <div class="panel-content-body">
+                    <div class="form-row-cotizacion" style="margin-bottom: 12px;">
+                        <label class="field-label" style="width: 120px;">* Tipo de Persona</label>
+                        <select id="cmbTipoPersonaVenta" class="ctrl-select" style="width: 200px;">
+                            <option value="NATURAL" selected>Natural</option>
+                            <option value="JURIDICA">Jurídica</option>
+                        </select>
+                    </div>
+                    <div class="form-row-cotizacion" style="margin-bottom: 18px;">
+                        <label class="field-label" style="width: 120px; line-height: 1.2;">* Tipo de<br>Documento</label>
+                        <select id="cmbTipoDocVenta" class="ctrl-select" style="width: 200px; margin-right: 15px;">
+                            <option value="DNI" selected>DNI</option>
+                            <option value="RUC">RUC</option>
+                            <option value="CE">Carnet de Extranjería</option>
+                            <option value="PAS">Pasaporte</option>
+                        </select>
+                        <label class="field-label" style="width: auto; line-height: 1.2; margin-right: 8px;">* N° de<br>Documento</label>
+                        <input type="text" id="txtNumDocVenta" class="ctrl-input" style="width: 140px;" maxlength="15" autocomplete="off" />
+                        <a href="javascript:void(0)" class="btn-icon-search-orange" onclick="buscarDocumentoVenta()" title="Buscar Documento">
+                            <i class="icon-search"></i>
+                        </a>
+                        <button type="button" class="btn-pill-orange" onclick="limpiarContratanteVenta()">
+                            <i class="icon-eraser"></i> Limpiar
+                        </button>
+                        <button type="button" class="btn-pill-orange" onclick="buscarClienteVenta()">
+                            <i class="icon-user"></i> Buscar Cliente
+                        </button>
+                    </div>
+                    <div class="form-row-cotizacion" style="padding-top: 5px;">
+                        <span style="font-size: 11px; margin-right: 15px; color: #606363;">¿Comprobante de pago a nombre del Contratante?</span>
+                        <label class="radio-label" style="font-size: 11px; margin-right: 12px;">
+                            <input type="radio" name="comprobanteVenta" value="SI" checked onchange="actualizarDatosComprobanteVenta()" /> SI
+                        </label>
+                        <label class="radio-label" style="font-size: 11px;">
+                            <input type="radio" name="comprobanteVenta" value="NO" onchange="actualizarDatosComprobanteVenta()" /> NO
+                        </label>
+                    </div>
+                    <div class="grid-3-col" id="datosComprobanteVenta" style="display: none; margin-top: 12px;">
+                        <div class="field-row"><span class="field-label">Nombre / Razón Social</span><div class="field-control"><input type="text" id="txtNombreContratanteVenta" class="ctrl-input" maxlength="150" /></div></div>
+                        <div class="field-row"><span class="field-label">Dirección</span><div class="field-control"><input type="text" id="txtDireccionContratanteVenta" class="ctrl-input" maxlength="180" /></div></div>
+                        <div class="field-row"><span class="field-label">Departamento</span><div class="field-control"><input type="text" id="txtDepartamentoContratanteVenta" class="ctrl-input" maxlength="80" /></div></div>
+                        <div class="field-row"><span class="field-label">Provincia</span><div class="field-control"><input type="text" id="txtProvinciaContratanteVenta" class="ctrl-input" maxlength="80" /></div></div>
+                        <div class="field-row"><span class="field-label">Distrito</span><div class="field-control"><input type="text" id="txtDistritoContratanteVenta" class="ctrl-input" maxlength="80" /></div></div>
+                        <div class="field-row"><span class="field-label">Teléfono</span><div class="field-control"><input type="tel" id="txtTelefonoContratanteVenta" class="ctrl-input" maxlength="30" /></div></div>
+                        <div class="field-row"><span class="field-label">Correo</span><div class="field-control"><input type="email" id="txtCorreoContratanteVenta" class="ctrl-input" maxlength="150" autocomplete="email" /></div></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel-form">
+                <div class="panel-header-teal">DATOS DEL CERTIFICADO</div>
+                <div class="panel-content-body">
+                    <div class="grid-3-col">
+                        <div>
+                            <div class="field-row">
+                                <span class="field-label">* N° de Formulario</span>
+                                <div class="field-control">
+                                    <input type="text" id="txtNumeroFormulario" class="ctrl-input disabled" value="" readonly />
+                                </div>
+                            </div>
+                            <div class="field-row">
+                                <span class="field-label">* Plan</span>
+                                <div class="field-control">
+                                    <input type="text" id="txtPlanCertificado" class="ctrl-input disabled" value="" readonly />
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="field-row">
+                                <span class="field-label">* Inicio de Vigencia</span>
+                                <div class="field-control">
+                                    <input type="text" id="txtInicioVigencia" class="ctrl-input disabled" value="" readonly />
+                                </div>
+                            </div>
+                            <div class="field-row">
+                                <span class="field-label">* Moneda</span>
+                                <div class="field-control">
+                                    <input type="text" id="txtMonedaCertificado" class="ctrl-input disabled" value="" readonly />
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="field-row">
+                                <span class="field-label">* Fin de Vigencia</span>
+                                <div class="field-control">
+                                    <input type="text" id="txtFinVigencia" class="ctrl-input disabled" value="" readonly />
+                                </div>
+                            </div>
+                            <div class="field-row">
+                                <span class="field-label">* Prima</span>
+                                <div class="field-control">
+                                    <input type="text" id="txtPrima" class="ctrl-input disabled" value="" readonly />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- PANEL 2: DATOS DEL CONTRATANTE -->
-                        <!-- PANEL 3: FORMA DE PAGO -->
+            <!-- PANEL 3: FORMA DE PAGO -->
             <div class="panel-form">
                 <div class="panel-header-teal">FORMA DE PAGO</div>
                 <div class="panel-content-body">
@@ -1217,19 +1573,94 @@
     <!-- Modal de Alerta / Notificación -->
     <div class="modal-alert" id="modalAlert">
         <div class="modal-alert-box">
-            <div class="modal-alert-header">SOAT en Línea - Notificación</div>
+            <div class="modal-alert-header"><span>Alerta</span><button type="button" class="modal-alert-close" aria-label="Cerrar alerta" onclick="cerrarModalAlert()">×</button></div>
             <div class="modal-alert-body">
                 <img src="Images/iconos/color/icono-alerta.png" alt="Alerta" style="width: 32px; height: 32px;" />
                 <span id="modalAlertMsg">Mensaje del sistema</span>
             </div>
             <div class="modal-alert-footer">
-                <button type="button" class="btn-continue" style="padding: 4px 18px; font-size: 11px;" onclick="cerrarModalAlert()">Aceptar</button>
+                <button type="button" class="modal-alert-ok" onclick="cerrarModalAlert()">✓ Ok</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="emision-review-modal" id="modalRevisionEmision" role="dialog" aria-modal="true" aria-labelledby="modalRevisionTitulo">
+        <div class="emision-review-box">
+            <div class="emision-review-header">
+                <span id="modalRevisionTitulo">Revisión de datos</span>
+                <button type="button" class="emision-review-close" aria-label="Cerrar" onclick="cerrarRevisionEmision()">×</button>
+            </div>
+            <div class="emision-review-content">
+                <div class="emision-review-section">
+                    <h3>FORMA DE PAGO</h3>
+                    <div class="emision-review-grid" id="revisionFormaPago"></div>
+                </div>
+                <div class="emision-review-section">
+                    <h3>DATOS DEL VEHÍCULO</h3>
+                    <div class="emision-review-grid" id="revisionVehiculo"></div>
+                </div>
+                <div class="emision-review-section">
+                    <h3>DATOS DEL CONTRATANTE</h3>
+                    <div class="emision-review-grid" id="revisionContratante"></div>
+                </div>
+                <p style="margin: 4px 2px 0; color: #777; font-size: 11px;">El estado de vigencia no está verificado porque el registro SOAT aún no está conectado.</p>
+            </div>
+            <div class="emision-review-actions">
+                <button type="button" class="btn-continue" onclick="continuarConEmision('emitir')">
+                    <svg class="emision-action-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 2.5h8l4 4v11H4z" /><path d="M12 2.5v4h4M7 12l2 2 4-4" /></svg>
+                    Emitir
+                </button>
+                <button type="button" class="btn-pill-orange" onclick="continuarConEmision('cotizar')">
+                    <svg class="emision-action-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 2.5h8l4 4v11H4z" /><path d="M12 2.5v4h4M7 10h6M7 13h6" /></svg>
+                    Cotizar
+                </button>
+                <button type="button" class="btn-cancel" onclick="cerrarRevisionEmision()">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="emision-result-modal" id="modalResultadoEmision" role="dialog" aria-modal="true" aria-labelledby="modalResultadoEmisionTitulo">
+        <div class="emision-result-box">
+            <div class="emision-result-header">
+                <span id="modalResultadoEmisionTitulo">Emisión de SOAT</span>
+                <button type="button" class="emision-result-close" aria-label="Cerrar" onclick="cerrarResultadoEmision()">×</button>
+            </div>
+            <div class="emision-result-content">
+                <p class="emision-result-message"><strong>La emisión no se procesó.</strong> El servicio de emisión no está conectado.</p>
+                <p>Nro. Póliza: <strong>No generado</strong></p>
+                <p>Nro. Certificado: <strong>No generado</strong></p>
+                <p>Nro. Formulario: <strong>No generado</strong></p>
+                <p>Nro. Recibo: <strong>No generado</strong></p>
+                <label class="emision-result-email" for="correoEnvioCupon">
+                    <span>Enviar cupón a:</span>
+                    <input type="email" id="correoEnvioCupon" maxlength="150" autocomplete="email" />
+                </label>
+            </div>
+            <p class="emision-result-notice" id="emisionResultFeedback" aria-live="polite">Vista de prueba: no se ha emitido una póliza ni se ha enviado un cupón.</p>
+            <div class="emision-result-actions">
+                <button type="button" class="btn-pill-orange" onclick="descargarPdfDemo()">
+                    <svg class="emision-action-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 2.5h8l4 4v11H4z" /><path d="M12 2.5v4h4M10 9v5m-2-2 2 2 2-2" /></svg>
+                    Descargar PDF DEMO
+                </button>
+                <button type="button" class="btn-continue" onclick="mostrarResultadoEmision('La autorización de emisión no está disponible en este prototipo.')">
+                    <svg class="emision-action-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.5 16 5v4.2c0 3.8-2.5 6.6-6 8.3-3.5-1.7-6-4.5-6-8.3V5z" /><path d="m7.2 9.8 1.8 1.8 3.8-4" /></svg>
+                    Autorización de Emisión
+                </button>
+                <button type="button" class="btn-pill-orange" onclick="mostrarResultadoEmision('El envío del cupón no está disponible en este prototipo.')">
+                    <svg class="emision-action-icon" viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="4" width="15" height="12" rx="1.5" /><path d="m3.5 5 6.5 5 6.5-5" /></svg>
+                    Enviar Cupón
+                </button>
+                <button type="button" class="btn-cancel" onclick="cerrarResultadoEmision()">
+                    <svg class="emision-action-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15" /></svg>
+                    Cerrar
+                </button>
             </div>
         </div>
     </div>
 
     <script src="Scripts/Tools/jquery-3.6.1.min.js"></script>
     <script src="Scripts/Tools/bootstrap.bundle.min.js"></script>
+    <script src="Scripts/Ventas/pdf-demo.js"></script>
 
     <script>
         // Navegación de pestañas
@@ -1327,6 +1758,100 @@
 
         function cerrarModalAlert() {
             document.getElementById('modalAlert').classList.remove('show');
+        }
+
+        function obtenerValorRevision(id) {
+            if (id === 'comprobanteVenta') {
+                var comprobante = document.querySelector('input[name="comprobanteVenta"]:checked');
+                return comprobante ? comprobante.value : '';
+            }
+            var campo = document.getElementById(id);
+            if (!campo) return '';
+            if (campo.tagName === 'SELECT') {
+                return campo.selectedIndex >= 0 ? campo.options[campo.selectedIndex].text : '';
+            }
+            return campo.value.trim();
+        }
+
+        function llenarDatosRevision(contenedorId, datos) {
+            var contenedor = document.getElementById(contenedorId);
+            contenedor.innerHTML = '';
+            datos.forEach(function (dato) {
+                var item = document.createElement('div');
+                item.className = 'emision-review-item';
+                var etiqueta = document.createElement('span');
+                etiqueta.textContent = dato[0];
+                var valor = document.createElement('span');
+                valor.textContent = obtenerValorRevision(dato[1]) || '—';
+                item.appendChild(etiqueta);
+                item.appendChild(valor);
+                contenedor.appendChild(item);
+            });
+        }
+
+        function abrirRevisionEmision() {
+            llenarDatosRevision('revisionFormaPago', [
+                ['Forma de pago', 'txtFormaPago'],
+                ['Tipo de cambio', 'txtTipoCambio'],
+                ['Moneda', 'cmbMoneda'],
+                ['Monto a pagar', 'txtMontoPagar'],
+                ['Fecha de operación', 'txtFechaOperacion']
+            ]);
+            llenarDatosRevision('revisionVehiculo', [
+                ['Placa', 'txtPlaca'],
+                ['Clase', 'cmbClase'],
+                ['Marca', 'cmbMarca'],
+                ['Modelo específico', 'txtModeloEsp'],
+                ['Modelo', 'cmbModelo'],
+                ['Año', 'txtAnio'],
+                ['Uso', 'cmbUso'],
+                ['N° de serie', 'txtSerie'],
+                ['Zona de circulación', 'cmbZona'],
+                ['Categoría', 'cmbCategoria'],
+                ['Versión', 'cmbVersion'],
+                ['N° de asientos', 'txtAsientos']
+            ]);
+            llenarDatosRevision('revisionContratante', [
+                ['Tipo de persona', 'cmbTipoPersonaVenta'],
+                ['Tipo de documento', 'cmbTipoDocVenta'],
+                ['N° de documento', 'txtNumDocVenta'],
+                ['Nombre / Razón Social', 'txtNombreContratanteVenta'],
+                ['Dirección', 'txtDireccionContratanteVenta'],
+                ['Departamento', 'txtDepartamentoContratanteVenta'],
+                ['Provincia', 'txtProvinciaContratanteVenta'],
+                ['Distrito', 'txtDistritoContratanteVenta'],
+                ['Teléfono', 'txtTelefonoContratanteVenta'],
+                ['Correo', 'txtCorreoContratanteVenta'],
+                ['Comprobante al contratante', 'comprobanteVenta']
+            ]);
+            document.getElementById('modalRevisionEmision').classList.add('show');
+        }
+
+        function cerrarRevisionEmision() {
+            document.getElementById('modalRevisionEmision').classList.remove('show');
+        }
+
+        function abrirResultadoEmision() {
+            document.getElementById('correoEnvioCupon').value = document.getElementById('txtCorreoContratanteVenta').value.trim();
+            document.getElementById('emisionResultFeedback').textContent = 'Vista de prueba: no se ha emitido una póliza ni se ha enviado un cupón.';
+            document.getElementById('modalResultadoEmision').classList.add('show');
+        }
+
+        function cerrarResultadoEmision() {
+            document.getElementById('modalResultadoEmision').classList.remove('show');
+        }
+
+        function mostrarResultadoEmision(mensaje) {
+            document.getElementById('emisionResultFeedback').textContent = mensaje;
+        }
+
+        function continuarConEmision(accion) {
+            cerrarRevisionEmision();
+            if (accion === 'emitir') {
+                abrirResultadoEmision();
+            } else if (accion === 'cotizar') {
+                mostrarMensaje("La cotización no está conectada a un servicio real.");
+            }
         }
 
                         // Base de datos de vehículos con datos coherentes oficiales MTC Perú
@@ -1541,6 +2066,15 @@
                 var dia = String(d.getDate()).padStart(2, '0');
                 var mes = String(d.getMonth() + 1).padStart(2, '0');
                 document.getElementById('txtFechaOperacion').value = dia + '/' + mes + '/' + d.getFullYear();
+                var fechaFin = new Date(d);
+                fechaFin.setFullYear(fechaFin.getFullYear() + 1);
+                var diaFin = String(fechaFin.getDate()).padStart(2, '0');
+                var mesFin = String(fechaFin.getMonth() + 1).padStart(2, '0');
+                if (document.getElementById('txtInicioVigencia')) document.getElementById('txtInicioVigencia').value = dia + '/' + mes + '/' + d.getFullYear();
+                if (document.getElementById('txtFinVigencia')) document.getElementById('txtFinVigencia').value = diaFin + '/' + mesFin + '/' + fechaFin.getFullYear();
+                if (document.getElementById('txtPlanCertificado')) document.getElementById('txtPlanCertificado').value = 'TARIFARIO CORREDOR';
+                if (document.getElementById('txtMonedaCertificado')) document.getElementById('txtMonedaCertificado').value = document.getElementById('cmbMoneda').value || 'Soles';
+                if (document.getElementById('txtPrima')) document.getElementById('txtPrima').value = v.monto || 'S/ 0.00';
             }
         }
 
@@ -1621,6 +2155,12 @@
             if (document.getElementById('txtTipoCambio')) document.getElementById('txtTipoCambio').value = '';
             if (document.getElementById('txtMontoPagar')) document.getElementById('txtMontoPagar').value = '';
             if (document.getElementById('txtFechaOperacion')) document.getElementById('txtFechaOperacion').value = '';
+            if (document.getElementById('txtNumeroFormulario')) document.getElementById('txtNumeroFormulario').value = '';
+            if (document.getElementById('txtPlanCertificado')) document.getElementById('txtPlanCertificado').value = '';
+            if (document.getElementById('txtInicioVigencia')) document.getElementById('txtInicioVigencia').value = '';
+            if (document.getElementById('txtFinVigencia')) document.getElementById('txtFinVigencia').value = '';
+            if (document.getElementById('txtMonedaCertificado')) document.getElementById('txtMonedaCertificado').value = '';
+            if (document.getElementById('txtPrima')) document.getElementById('txtPrima').value = '';
 
             // Formulario limpiado directamente sin popup
         }
@@ -1646,7 +2186,7 @@
                 document.getElementById('cmbClase').focus();
                 return;
             }
-            mostrarMensaje("Validación completada con éxito. Procesando emisión SOAT...");
+            abrirRevisionEmision();
         }
 
         function cancelarEmision() {
@@ -1701,6 +2241,43 @@
 
         function buscarClienteCot() {
             mostrarMensaje("Abriendo modal de búsqueda avanzada de clientes...");
+        }
+
+        var datosContratanteManual = false;
+
+        function actualizarDatosComprobanteVenta() {
+            var comprobante = document.querySelector('input[name="comprobanteVenta"]:checked');
+            var datos = document.getElementById('datosComprobanteVenta');
+            datos.style.display = comprobante && comprobante.value === 'NO' || datosContratanteManual ? 'grid' : 'none';
+        }
+
+        function buscarDocumentoVenta() {
+            var doc = document.getElementById('txtNumDocVenta').value.trim();
+            if (!doc) {
+                mostrarMensaje("Debe ingresar el número de documento del contratante.");
+                document.getElementById('txtNumDocVenta').focus();
+                return;
+            }
+            datosContratanteManual = true;
+            actualizarDatosComprobanteVenta();
+            mostrarMensaje("La búsqueda de documentos no está conectada. Puede completar los datos del contratante manualmente.");
+        }
+
+        function limpiarContratanteVenta() {
+            document.getElementById('cmbTipoPersonaVenta').value = 'NATURAL';
+            document.getElementById('cmbTipoDocVenta').value = 'DNI';
+            document.getElementById('txtNumDocVenta').value = '';
+            ['txtNombreContratanteVenta', 'txtDireccionContratanteVenta', 'txtDepartamentoContratanteVenta', 'txtProvinciaContratanteVenta', 'txtDistritoContratanteVenta', 'txtTelefonoContratanteVenta', 'txtCorreoContratanteVenta'].forEach(function (id) {
+                document.getElementById(id).value = '';
+            });
+            document.querySelector('input[name="comprobanteVenta"][value="SI"]').checked = true;
+            datosContratanteManual = false;
+            actualizarDatosComprobanteVenta();
+            document.getElementById('txtNumDocVenta').focus();
+        }
+
+        function buscarClienteVenta() {
+            mostrarMensaje("Abriendo búsqueda de clientes para el contratante...");
         }
 
         function procesarContinuarCot() {

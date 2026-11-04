@@ -3,61 +3,164 @@
 <style>
 *{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#181818;margin:0;padding:40px 20px;background:#fff}main{max-width:960px;margin:auto}.consulta-card{width:100%;max-width:397px;margin:0 auto;background:#fff;padding:26px 20px 20px;border-radius:12px;box-shadow:0 10px 30px #3f238914}.consulta-card h1{color:#3f2389;font-size:32px;font-weight:700;line-height:1.2;text-align:center;margin:0 0 30px}form{display:flex;flex-direction:column;gap:18px}label{display:block;font-size:15px;line-height:20px;font-weight:700}input{font:16px Arial,sans-serif;width:100%;height:41px;padding:10px;border:1px solid #ccc;border-radius:8px;outline:none;color:#333;background:white}input:focus{border-color:#21aa7d;box-shadow:0 0 5px #21aa7d66}.plate-field{display:grid;gap:17px}.captcha-block{display:grid;gap:16px}.captcha-row{display:flex;gap:10px;align-items:center}.captcha-row input{flex:1;min-width:0;height:43px}.captcha-image{display:block;flex:0 0 130px;width:130px;height:43px;padding:0;border:0;border-radius:8px;background:#f0f0f0;cursor:pointer;overflow:hidden}.captcha-image img{display:block;width:100%;height:100%;object-fit:fill}.captcha-image:focus-visible{outline:3px solid #21aa7d;outline-offset:3px}#submit{font:700 14px Arial,sans-serif;width:100%;height:50px;border:0;border-radius:8px;background:#3f2389;color:#fff;cursor:pointer;margin-top:25px}#submit:hover{background:#2f1a6d}#submit:disabled{opacity:.65;cursor:wait}#captcha-error{font-size:13px;color:#9c2929}#captcha-error:empty{display:none}#message:empty{display:none}#message{max-width:397px;margin:18px auto;line-height:1.6}#result{margin:28px auto;padding:20px;border-radius:12px;box-shadow:0 4px 16px #00000014}h2{color:#3f2389;font-size:22px}dl{display:grid;grid-template-columns:1fr 1fr;gap:12px}dt{font-weight:bold}dd{margin:0}.scroll{overflow:auto}table{border-collapse:collapse;width:100%;font-size:14px}td,th{padding:12px;border:1px solid #ddd;text-align:left;white-space:nowrap}th{background:#3f2389;color:white}.status-badge{display:inline-block;padding:4px 10px;border-radius:5px;font-weight:bold}.status-badge.cancelled{background:#6c757d;color:white}.status-badge.active{background:#258345;color:white}.cancelled-notice{padding:14px;border:1px solid #c4c9ce;border-radius:6px;background:#f2f3f5;color:#40464d}.cancelled-section{margin-top:24px}.cancelled-section th{background:#626a73;color:white}@media(max-width:420px){body{padding:20px 12px}.consulta-card{padding:24px 20px 20px}.consulta-card h1{font-size:29px}.captcha-image{flex-basis:112px;width:112px}.captcha-row input{font-size:14px}dl{grid-template-columns:1fr}#result{padding:14px}}
 </style>
+<style>
+.notice-panel{max-width:430px;margin:0 auto;padding:22px 18px 16px;border-radius:12px;background:#fff;box-shadow:0 6px 24px #00000014;text-align:center}
+.notice-panel h2{margin:0 0 22px;color:#3f2389;font-size:25px;font-weight:400}
+.notice-content{padding:24px 18px 27px;border-radius:12px;background:#fafafa;box-shadow:0 3px 12px #0000000d}
+.notice-title{display:flex;justify-content:center;align-items:center;gap:10px;margin:0 0 14px;color:#e84c4c;font-size:20px;line-height:1.35}
+.notice-icon{font-size:27px;font-weight:700}
+.notice-description{margin:0 0 24px;color:#555;font-size:14px;line-height:1.5}
+#back-to-consult{min-height:40px;padding:0 22px;border:0;border-radius:8px;background:#45258c;color:#fff;font-weight:700;cursor:pointer}
+#back-to-consult:hover{background:#35206d}
+@media(max-width:420px){.notice-panel{padding:20px 14px 14px}.notice-panel h2{font-size:22px}.notice-content{padding:22px 12px}.notice-title{font-size:18px}}
+</style>
+<style>
+.result-card{width:100%;max-width:430px;margin:0 auto;padding:24px 20px 20px;border-radius:12px;background:#fff;box-shadow:0 6px 24px #00000014}
+.result-card>h2{margin:0 0 24px;color:#3f2389;font-size:27px;font-weight:400;text-align:center}
+.result-table{border:1px solid #ddd}
+.result-row{display:grid;grid-template-columns:38% 62%;min-height:49px}
+.result-row+.result-row{border-top:1px solid #ddd}
+.result-label,.result-value{display:flex;align-items:center;padding:11px 12px;font-size:14px;line-height:1.45;overflow-wrap:anywhere}
+.result-label{background:#3f2389;color:#fff}
+.result-value{background:#fafafa}
+.result-status{display:inline-block;padding:4px 10px;border-radius:6px;background:#1da77d;color:#fff;font-weight:700}
+.result-status.expired,.result-status.cancelled{background:#6c757d}
+.result-status.pending{background:#e2a72e}
+.history-toggle{display:block;min-height:44px;margin:24px auto 0;padding:0 24px;border:0;border-radius:8px;background:#45258c;color:#fff;font-size:14px;font-weight:700;cursor:pointer}
+.history-toggle:hover{background:#35206d}
+.history-modal{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;background:#0009}
+.history-modal[hidden]{display:none}
+.history-dialog{width:min(900px,100%);max-height:82vh;padding:16px 14px 14px;border-radius:10px;background:#fff;box-shadow:0 12px 32px #0005;display:flex;flex-direction:column}
+.history-dialog h2{flex:none;margin:0 0 16px;color:#3f2389;font-size:18px;font-weight:400;text-align:center}
+.history-table{min-height:0;overflow:auto}
+.history-table table{width:max-content;min-width:100%;border-collapse:collapse;font-size:11px}
+.history-table th{position:sticky;top:0;padding:7px 8px;background:#45258c;color:#fff;text-align:center;white-space:nowrap}
+.history-table td{padding:6px 8px;background:#fff;text-align:center;white-space:nowrap}
+.history-table .status-badge{padding:2px 6px;font-size:10px;color:#fff;background:#e33f50}
+.history-table .status-badge.active{background:#1da77d}
+.history-actions{flex:none;display:flex;justify-content:center;padding-top:12px}
+#close-history{min-height:36px;padding:0 18px;border:0;border-radius:7px;background:#45258c;color:#fff;font-size:12px;font-weight:700;cursor:pointer}
+#close-history:hover{background:#35206d}
+@media(max-width:420px){.result-card{padding:22px 14px 18px}.result-card>h2{font-size:24px}.result-row{grid-template-columns:40% 60%}.result-label,.result-value{padding:10px;font-size:13px}}
+</style>
 <main><section class="consulta-card" aria-labelledby="consulta-title"><h1 id="consulta-title">Consulta SOAT</h1>
-<form id="form"><div class="plate-field"><label for="plate">N&uacute;mero de Placa</label><input id="plate" required maxlength="9" pattern="[A-Za-z0-9-]{6,9}" placeholder="Ingresa la placa" autocomplete="off"></div><div class="captcha-block"><label for="captcha">Captcha</label><div class="captcha-row"><input id="captcha" required minlength="5" maxlength="5" autocomplete="off" spellcheck="false" placeholder="Ingresa el captcha"><button id="refresh-captcha" class="captcha-image" type="button" aria-label="Cambiar imagen del captcha" title="Haz clic para cambiar el captcha"><img id="captcha-image" width="130" height="43" alt="Codigo del captcha"></button></div><span id="captcha-error" role="status"></span></div><button id="submit">Consultar</button></form></section>
-<p role="status" id="message" aria-live="polite"></p><section id="result" hidden><h2>Resultado</h2><p id="cancelled-notice" class="cancelled-notice" hidden>Certificado ANULADO. Este certificado no cuenta con cobertura vigente.</p><dl id="details"></dl><h2>Historial de certificados registrados</h2><div class="scroll"><table><thead><tr><th>Compa&ntilde;&iacute;a</th><th>P&oacute;liza</th><th>Inicio</th><th>Fin</th><th>Estado</th></tr></thead><tbody id="history"></tbody></table></div><section id="cancelled-section" class="cancelled-section" hidden aria-labelledby="cancelled-heading"><h2 id="cancelled-heading">Certificados anulados</h2><div class="scroll"><table><thead><tr><th>Compa&ntilde;&iacute;a</th><th>P&oacute;liza</th><th>Inicio</th><th>Fin</th><th>Fecha de anulaci&oacute;n</th><th>Estado</th></tr></thead><tbody id="cancelled-history"></tbody></table></div></section></section>
+<form id="form"><div class="plate-field"><label for="plate">N&uacute;mero de Placa</label><input id="plate" required maxlength="9" pattern="[A-Za-z0-9\-]{6,9}" placeholder="Ingresa la placa" autocomplete="off"></div><div class="captcha-block"><label for="captcha">Captcha</label><div class="captcha-row"><input id="captcha" required minlength="5" maxlength="5" autocomplete="off" spellcheck="false" placeholder="Ingresa el captcha"><button id="refresh-captcha" class="captcha-image" type="button" aria-label="Cambiar imagen del captcha" title="Haz clic para cambiar el captcha"><img id="captcha-image" width="130" height="43" alt="Codigo del captcha"></button></div><span id="captcha-error" role="status"></span></div><button id="submit">Consultar</button></form></section>
+<section id="notice" class="notice-panel" hidden aria-labelledby="notice-heading" aria-live="polite"><h2 id="notice-heading">Resultado de la consulta</h2><div class="notice-content"><p class="notice-title"><span class="notice-icon" aria-hidden="true">×</span><span id="notice-title"></span></p><p id="notice-description" class="notice-description"></p><button id="back-to-consult" type="button">🔎 Volver a consultar</button></div></section>
+<p role="status" id="message" aria-live="polite"></p><section id="result" class="result-card" hidden aria-labelledby="result-heading"><h2 id="result-heading">Resultado de la Consulta</h2><p id="cancelled-notice" class="cancelled-notice" hidden>Certificado ANULADO. Este certificado no cuenta con cobertura vigente.</p><div id="details" class="result-table"></div><button id="toggle-history" class="history-toggle" type="button">📜 Ver Historial</button></section>
+<section id="history-modal" class="history-modal" hidden role="dialog" aria-modal="true" aria-labelledby="history-heading"><div class="history-dialog"><h2 id="history-heading">Historial de Certificados</h2><div class="history-table"><table><thead><tr><th>Compa&ntilde;&iacute;a</th><th>Estado</th><th>Inicio</th><th>Fin</th><th>Placa</th><th>Certificado</th><th>Uso</th><th>Clase</th><th>Tipo</th><th>Fec. Creaci&oacute;n</th><th>Fec. Anulaci&oacute;n</th><th>Fec. Ctrl. Policial</th><th>N&uacute;mero Asientos</th><th>Modelo Veh&iacute;culo</th><th>Marca</th></tr></thead><tbody id="history"></tbody></table></div><div class="history-actions"><button id="close-history" type="button">Consultar otro SOAT</button></div></div></section>
 </main>
 <script>
 const form=document.querySelector('#form'),message=document.querySelector('#message'),result=document.querySelector('#result'),button=document.querySelector('#submit');
+const formCard=document.querySelector('.consulta-card'),notice=document.querySelector('#notice');
+function showNotice(title,description){document.querySelector('#notice-title').textContent=title;document.querySelector('#notice-description').textContent=description;formCard.hidden=true;result.hidden=true;message.textContent='';notice.hidden=false}
+document.querySelector('#back-to-consult').addEventListener('click',()=>{notice.hidden=true;formCard.hidden=false;document.querySelector('#plate').value='';document.querySelector('#captcha').value='';refreshCaptcha()});
+const historyModal=document.querySelector('#history-modal'),historyTrigger=document.querySelector('#toggle-history');
+function closeHistory(returnToForm=false){
+  historyModal.hidden=true;
+  if(returnToForm){result.hidden=true;formCard.hidden=false;document.querySelector('#plate').value='';document.querySelector('#captcha').value='';refreshCaptcha()}
+  else historyTrigger.focus();
+}
+historyTrigger.addEventListener('click',()=>{historyModal.hidden=false;document.querySelector('#close-history').focus()});
+document.querySelector('#close-history').addEventListener('click',()=>closeHistory(true));
+historyModal.addEventListener('click',event=>{if(event.target===historyModal)closeHistory()});
+document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!historyModal.hidden)closeHistory()});
 function refreshCaptcha(){button.disabled=true;document.querySelector('#captcha').value='';document.querySelector('#captcha-error').textContent='';document.querySelector('#captcha-image').src='/api/captcha?t='+Date.now()}
 document.querySelector('#captcha-image').addEventListener('load',()=>{button.disabled=false});
 document.querySelector('#captcha-image').addEventListener('error',()=>{document.querySelector('#captcha-error').textContent='No se pudo cargar el codigo. Pulsa actualizar para reintentar.'});
 document.querySelector('#refresh-captcha').addEventListener('click',refreshCaptcha);
 refreshCaptcha();
 const statusNames={VIGENTE:'Vigente',VENCIDO:'Vencido',ANULADO:'Anulado','A\u00daN_NO_VIGENTE':'Aun no vigente'};
-function date(value){return value ? new Intl.DateTimeFormat('es-PE',{timeZone:'America/Lima'}).format(new Date(value.length===10?value+'T12:00:00-05:00':value)):'-'}
+function date(value,withTime=false){if(!value)return '-';const parsed=new Date(value.length===10?value+'T12:00:00-05:00':value);if(Number.isNaN(parsed.getTime()))return value;return new Intl.DateTimeFormat('es-PE',{timeZone:'America/Lima',...(withTime?{dateStyle:'short',timeStyle:'short'}:{})}).format(parsed)}
 function cell(tag,value){const el=document.createElement(tag);el.textContent=value||'-';return el}
 function stateCell(record){
   const td=cell('td','');
-  const badge=cell('span',statusNames[record.status]||record.status);
-  badge.className='status-badge'+(record.status==='ANULADO'?' cancelled':record.status==='VIGENTE'?' active':'');
+  const status=field(record,'status','Estado');
+  const badge=cell('span',statusNames[status]||status);
+  badge.className='status-badge'+(status==='ANULADO'?' cancelled':status==='VIGENTE'?' active':'');
   td.replaceChildren(badge);
   return td;
 }
+function field(record,...keys){for(const key of keys){const value=record[key];if(value!==undefined&&value!==null&&value!=='')return value}return ''}
+function historyCell(value){const td=document.createElement('td');td.textContent=value??'';return td}
+function historyRow(record){
+  const tr=document.createElement('tr');
+  for(const value of [
+    field(record,'insurer','NombreCompania','company'),
+    field(record,'status','Estado'),
+    date(field(record,'startsAt','FechaInicio')),
+    date(field(record,'expiresAt','FechaFin')),
+    field(record,'plate','Placa'),
+    field(record,'policyNumber','NumeroPoliza','NumeroCertificado'),
+    field(record,'vehicleUse','NombreUsoVehiculo'),
+    field(record,'vehicleClass','NombreClaseVehiculo'),
+    field(record,'certificateType','TipoCertificado'),
+    date(field(record,'createdAt','FechaCreacion'),true),
+    date(field(record,'cancelledAt','FechaAnulacion')),
+    date(field(record,'policeCheckAt','FechaControlPolicial')),
+    field(record,'seats','NumeroAsientos'),
+    field(record,'vehicleModel','ModeloVehiculo'),
+    field(record,'make','Marca')
+  ])tr.append(historyCell(value));
+  const status=field(record,'status','Estado');
+  const statusCell=tr.children[1];
+  if(status){
+    const badge=cell('span',statusNames[status]||status);
+    badge.className='status-badge'+(status==='VIGENTE'?' active':'');
+    statusCell.replaceChildren(badge);
+  }
+  return tr;
+}
+function addDetail(label,value,isStatus=false){
+  if(value===undefined||value===null||value==='')return;
+  const row=document.createElement('div');row.className='result-row';
+  row.append(cell('div',label),cell('div',''));
+  row.children[0].className='result-label';
+  row.children[1].className='result-value';
+  if(isStatus){
+    const badge=cell('span',statusNames[value]||value);
+    badge.className='result-status'+(value==='ANULADO'?' cancelled':value==='VIGENTE'?'':' '+(value==='VENCIDO'?'expired':'pending'));
+    row.children[1].replaceChildren(badge);
+  }else row.children[1].textContent=value;
+  document.querySelector('#details').append(row);
+}
 function renderResult(data){
-  document.querySelector('#cancelled-notice').hidden=data.status!=='ANULADO';
-  message.textContent=data.status==='ANULADO'?'El certificado consultado esta ANULADO.':'Certificado encontrado en el registro interno.';
-  for(const [label,value] of [['Placa',data.plate],['Aseguradora',data.insurer],['Certificado',data.policyNumber],['Estado',statusNames[data.status]||data.status],['Inicio',date(data.startsAt)],['Fin',date(data.expiresAt)],['Fecha de anulacion',data.status==='ANULADO'?date(data.cancelledAt):null],['Uso',data.vehicleUse],['Clase',data.vehicleClass],['Tipo',data.certificateType]]){
-    if(value)document.querySelector('#details').append(cell('dt',label),cell('dd',value));
-  }
-  const records=data.history||[data];
-  for(const record of records){
-    const tr=document.createElement('tr');
-    for(const value of [record.insurer,record.policyNumber,date(record.startsAt),date(record.expiresAt)])tr.append(cell('td',value));
-    tr.append(stateCell(record));
-    document.querySelector('#history').append(tr);
-  }
-  const cancelled=records.filter(record=>record.status==='ANULADO');
-  document.querySelector('#cancelled-section').hidden=cancelled.length===0;
-  for(const record of cancelled){
-    const tr=document.createElement('tr');
-    for(const value of [record.insurer,record.policyNumber,date(record.startsAt),date(record.expiresAt),date(record.cancelledAt)])tr.append(cell('td',value));
-    tr.append(stateCell(record));
-    document.querySelector('#cancelled-history').append(tr);
-  }
+  const status=field(data,'status','Estado');
+  document.querySelector('#cancelled-notice').hidden=status!=='ANULADO';
+  message.textContent='';
+  addDetail('Compañía',field(data,'insurer','NombreCompania','company'));
+  addDetail('Estado',field(data,'status','Estado'),true);
+  addDetail('Inicio',date(field(data,'startsAt','FechaInicio')));
+  addDetail('Fin',date(field(data,'expiresAt','FechaFin')));
+  addDetail('Placa',field(data,'plate','Placa'));
+  addDetail('Certificado',field(data,'policyNumber','NumeroPoliza','NumeroCertificado'));
+  addDetail('Uso',field(data,'vehicleUse','NombreUsoVehiculo'));
+  addDetail('Clase',field(data,'vehicleClass','NombreClaseVehiculo'));
+  addDetail('Tipo',field(data,'certificateType','TipoCertificado'));
+  addDetail('Fec. Creación',date(field(data,'createdAt','FechaCreacion'),true));
+  addDetail('Fec. Anulación',date(field(data,'cancelledAt','FechaAnulacion')));
+  addDetail('Fec. Control Policial',date(field(data,'policeCheckAt','FechaControlPolicial')));
+  addDetail('Número de Asientos',field(data,'seats','NumeroAsientos'));
+  addDetail('Modelo de Vehículo',field(data,'vehicleModel','ModeloVehiculo'));
+  addDetail('Marca',field(data,'make','Marca'));
+  const records=Array.isArray(data.history)&&data.history.length?data.history:[data];
+  document.querySelector('#history').replaceChildren(...records.map(historyRow));
+  historyModal.hidden=true;
+  formCard.hidden=true;notice.hidden=true;
   result.hidden=false;
 }
 form.addEventListener('submit',async event=>{
   event.preventDefault();button.disabled=true;result.hidden=true;message.textContent='Consultando...';
-  for(const id of ['#details','#history','#cancelled-history'])document.querySelector(id).replaceChildren();
-  document.querySelector('#cancelled-section').hidden=true;
+  for(const id of ['#details','#history'])document.querySelector(id).replaceChildren();
+  historyModal.hidden=true;
   document.querySelector('#cancelled-notice').hidden=true;
   try{
     const response=await fetch('/api/consulta',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({plate:document.querySelector('#plate').value.trim().toUpperCase(),captcha:document.querySelector('#captcha').value}),cache:'no-store'});
     const payload=await response.json();
+    if(response.status===503){showNotice('No se pudo verificar la placa','La consulta del registro interno no está disponible en este momento. Inténtalo más tarde.');return}
+    if(response.status===400){message.textContent=payload.message||'Verifica el captcha e inténtalo nuevamente.';return}
     if(!response.ok)throw Error(payload.message||'No se pudo consultar.');
-    if(!payload.data.found){message.textContent='No encontramos certificados en el registro interno para esta placa.';return}
+    if(!payload.data.found){showNotice('No se encontró la placa solicitada','Por favor, verifica que la placa esté correctamente escrita.');return}
     renderResult(payload.data);
-  }catch(error){message.textContent=error.message||'Consulta no disponible.'}finally{refreshCaptcha()}
+  }catch(error){showNotice('No se pudo realizar la consulta','Ocurrió un problema al consultar. Vuelve a intentarlo.')}finally{refreshCaptcha()}
 });
 </script></html>

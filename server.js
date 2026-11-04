@@ -3,10 +3,14 @@ const https = require('https');
 const fs = require('fs');
 const path = require('path');
 const url = require('url');
+const crypto = require('crypto');
 
 const BASE_DIR = __dirname;
 const ENV_FILE = path.join(BASE_DIR, '.env');
 const DB = require('./db');
+const captchaChallenges = new Map();
+const CAPTCHA_TTL_MS = 5 * 60 * 1000;
+const CAPTCHA_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
 // Cargar variables desde archivo .env y process.env
 function leerConfig() {
@@ -304,6 +308,92 @@ const server = http.createServer(async (req, res) => {
     }
 
     // ==========================================
+    // 3.1 ENDPOINT: Imagen de captcha para consulta SOAT
+    // ==========================================
+    if (pathname === '/api/captcha' && req.method === 'GET') {
+        const now = Date.now();
+        for (const [id, challenge] of captchaChallenges) {
+            if (challenge.expiresAt <= now) captchaChallenges.delete(id);
+        }
+
+        const id = crypto.randomBytes(24).toString('hex');
+        let answer = '';
+        for (let i = 0; i < 5; i++) {
+            answer += CAPTCHA_ALPHABET[crypto.randomInt(CAPTCHA_ALPHABET.length)];
+        }
+        captchaChallenges.set(id, { answer, expiresAt: now + CAPTCHA_TTL_MS });
+
+        const characters = [...answer].map((character, index) => {
+            const x = 14 + index * 25.5;
+            const y = 29 + crypto.randomInt(-2, 3);
+            const rotation = crypto.randomInt(-11, 12);
+            return `<text x="${x}" y="${y}" transform="rotate(${rotation} ${x} ${y})">${character}</text>`;
+        }).join('');
+        const lines = Array.from({ length: 3 }, () => {
+            const x1 = crypto.randomInt(0, 131);
+            const y1 = crypto.randomInt(0, 44);
+            const x2 = crypto.randomInt(0, 131);
+            const y2 = crypto.randomInt(0, 44);
+            return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/>`;
+        }).join('');
+        const image = `<svg xmlns="http://www.w3.org/2000/svg" width="130" height="43" viewBox="0 0 130 43"><rect width="130" height="43" rx="8" fill="#f0f0f0"/><g stroke="#b7adcc" stroke-width="0.8" opacity="0.55">${lines}</g><g fill="#3f2389" font-family="Arial,sans-serif" font-size="22" font-weight="700">${characters}</g></svg>`;
+
+        res.writeHead(200, {
+            'Content-Type': 'image/svg+xml; charset=utf-8',
+            'Cache-Control': 'no-store, no-cache, must-revalidate, private',
+            'Set-Cookie': `soat_captcha=${id}; Path=/; HttpOnly; SameSite=Lax; Max-Age=300`
+        });
+        res.end(image);
+        return;
+    }
+
+    if (pathname === '/api/consulta' && req.method === 'POST') {
+        let body = '';
+        let bodyTooLarge = false;
+        req.on('data', chunk => {
+            if (body.length + chunk.length > 4096) {
+                bodyTooLarge = true;
+                return;
+            }
+            body += chunk;
+        });
+        req.on('end', () => {
+            if (bodyTooLarge) {
+                res.writeHead(413, { 'Content-Type': 'application/json; charset=utf-8' });
+                res.end(JSON.stringify({ message: 'Solicitud demasiado grande.' }));
+                return;
+            }
+
+            let data;
+            try {
+                data = JSON.parse(body);
+            } catch {
+                res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+                res.end(JSON.stringify({ message: 'Solicitud inválida.' }));
+                return;
+            }
+
+            const captchaId = cookies.soat_captcha;
+            const challenge = captchaId && captchaChallenges.get(captchaId);
+            if (captchaId) captchaChallenges.delete(captchaId);
+            if (!challenge || challenge.expiresAt <= Date.now() ||
+                !data || typeof data.captcha !== 'string' ||
+                data.captcha.trim().toUpperCase() !== challenge.answer) {
+                res.writeHead(400, {
+                    'Content-Type': 'application/json; charset=utf-8',
+                    'Set-Cookie': 'soat_captcha=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0'
+                });
+                res.end(JSON.stringify({ message: 'Captcha incorrecto o vencido. Inténtalo nuevamente.' }));
+                return;
+            }
+
+            res.writeHead(503, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({ message: 'La consulta de certificados aún no está conectada a un registro.' }));
+        });
+        return;
+    }
+
+    // ==========================================
     // 4. ENDPOINT: /Ventas/ObtenerInformacionPlaca
     // ==========================================
     if (pathname === '/Ventas/ObtenerInformacionPlaca' || pathname === '/api/consultar-placa') {
@@ -514,7 +604,19 @@ const server = http.createServer(async (req, res) => {
     // ==========================================
     // 7. SERVIDOR DE ARCHIVOS ESTÁTICOS
     // ==========================================
-    let filePath = path.join(BASE_DIR, pathname === '/' ? 'index.html' : pathname);
+    if (['/apeseg', '/apeseg/', '/apeseg/index.html', '/apeseg.html'].includes(pathname)) {
+        res.writeHead(301, { Location: '/consulta-soat' });
+        res.end();
+        return;
+    }
+
+    const publicRoutes = {
+        '/consulta-soat': 'apeseg.html',
+        '/consulta-soat/': 'apeseg.html',
+        '/consulta-interna.html': path.join('apeseg', 'consulta-interna.html')
+    };
+    const publicPath = publicRoutes[pathname] || (pathname === '/' ? 'index.html' : pathname);
+    let filePath = path.join(BASE_DIR, publicPath);
 
     if (!filePath.startsWith(BASE_DIR)) {
         res.writeHead(403);

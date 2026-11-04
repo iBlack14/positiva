@@ -1,0 +1,30 @@
+{
+  "data": {
+    "found": true,
+    "plate": "F3D314",
+    "insurer": "Interseguro",
+    "status": "VIGENTE",
+    "startsAt": "2026-06-23",
+    "expiresAt": "2027-06-23",
+    "policyNumber": "00000000000000594999099",
+    "vehicleUse": "PARTICULAR",
+    "vehicleClass": "CAMIONETA SUV/RURAL",
+    "certificateType": "DIGITAL",
+    "createdAt": "2026-06-23T09:38:00-05:00",
+    "cancelledAt": null,
+    "policeCheckAt": "2026-06-23",
+    "seats": 4,
+    "vehicleModel": "CAYENNE STIPTRONIC",
+    "make": "PORSCHE",
+    "history": [
+      {
+        "insurer": "Interseguro",
+        "policyNumber": "00000000000000594999099",
+        "plate": "F3D314",
+        "status": "VIGENTE",
+        "startsAt": "2026-06-23",
+        "expiresAt": "2027-06-23"
+      }
+    ]
+  }
+}
