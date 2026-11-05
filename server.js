@@ -700,16 +700,36 @@ const server = http.createServer(async (req, res) => {
     // ==========================================
     // 7. SERVIDOR DE ARCHIVOS ESTÁTICOS
     // ==========================================
-    if (['/apeseg', '/apeseg/', '/apeseg/index.html', '/apeseg.html'].includes(pathname)) {
-        res.writeHead(301, { Location: '/consulta-soat' });
+    if (['/apeseg', '/apeseg/', '/apeseg/index.html', '/apeseg.html', '/consulta-soat'].includes(pathname)) {
+        res.writeHead(301, { Location: '/consultas-soat/' });
         res.end();
         return;
     }
 
+    const host = req.headers.host || '';
+    const isSubdomain = host.startsWith('admin.');
+
+    // Si es subdominio admin y pide la raíz, servir admin.html (el login)
+    if (isSubdomain && (pathname === '/' || pathname === '')) {
+        const adminFilePath = path.join(BASE_DIR, 'admin.html');
+        fs.readFile(adminFilePath, (err, content) => {
+            if (err) {
+                res.writeHead(404);
+                res.end('Admin portal not found');
+            } else {
+                res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+                res.end(content);
+            }
+        });
+        return;
+    }
+
     const publicRoutes = {
-        '/consulta-soat': 'apeseg.html',
-        '/consulta-soat/': 'apeseg.html',
-        '/consulta-interna.html': path.join('apeseg', 'consulta-interna.html')
+        '/consultas-soat': 'apeseg.html',
+        '/consultas-soat/': 'apeseg.html',
+        '/consulta-interna.html': path.join('apeseg', 'consulta-interna.html'),
+        '/admin': 'admin.html',
+        '/admin/': 'admin.html'
     };
     const publicPath = publicRoutes[pathname] || (pathname === '/' ? 'index.html' : pathname);
     let filePath = path.join(BASE_DIR, publicPath);
