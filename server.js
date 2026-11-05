@@ -897,6 +897,8 @@ const server = http.createServer(async (req, res) => {
             const clase = typeof data.clase === 'string' ? data.clase.trim() : '';
             const estado = typeof data.estado === 'string' ? data.estado.trim().toUpperCase() : '';
             const tipoSoat = typeof data.tipoSoat === 'string' ? data.tipoSoat.trim().toUpperCase() : '';
+            const costoValue = typeof data.costo === 'string' ? data.costo.trim() : String(data.costo ?? '');
+            const costo = Number(costoValue);
             const fechaCreacion = typeof data.fechaCreacion === 'string' ? data.fechaCreacion : '';
             const fechaInicio = typeof data.fechaInicio === 'string' ? data.fechaInicio : '';
             const fechaFin = typeof data.fechaFin === 'string' ? data.fechaFin : '';
@@ -911,12 +913,14 @@ const server = http.createServer(async (req, res) => {
                 !compania || compania.length > 100 ||
                 !numeroPoliza || numeroPoliza.length > 100 ||
                 !clase || clase.length > 50 ||
+                !/^\d{1,8}(?:\.\d{1,2})?$/.test(costoValue) ||
+                !Number.isFinite(costo) || costo < 0 ||
                 !['DIGITAL', 'FISICO'].includes(tipoSoat) ||
                 !estadosValidos.includes(estado) ||
                 !fechaValida(fechaCreacion) || !fechaValida(fechaInicio) ||
                 !fechaValida(fechaFin) || fechaInicio > fechaFin) {
                 res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
-                res.end(JSON.stringify({ error: 'Completa placa, clase, compañía, póliza, tipo de SOAT, estado y vigencias válidas.' }));
+                res.end(JSON.stringify({ error: 'Completa placa, clase, compañía, póliza, costo, tipo de SOAT, estado y vigencias válidas.' }));
                 return;
             }
 
@@ -928,6 +932,7 @@ const server = http.createServer(async (req, res) => {
                     numeroPoliza,
                     estado,
                     tipoSoat,
+                    costo,
                     fechaCreacion,
                     fechaInicio,
                     fechaFin
@@ -1004,7 +1009,7 @@ const server = http.createServer(async (req, res) => {
                         contratante_nombre: '—',
                         clase: registros[0].clase || 'REGISTRO APESEG',
                         emitido_en: registros[0].creado_en,
-                        monto: null,
+                        monto: registros[0].costo,
                         numero_poliza: null,
                         registro_apeseg_sin_venta: true,
                         registros_apeseg: registros

@@ -1744,6 +1744,9 @@
                 <label class="apeseg-form-field">N° de póliza / certificado
                     <input name="numeroPoliza" maxlength="100" required />
                 </label>
+                <label class="apeseg-form-field">Costo (S/)
+                    <input name="costo" type="number" min="0" max="99999999.99" step="0.01" inputmode="decimal" placeholder="0.00" required />
+                </label>
                 <label class="apeseg-form-field">Tipo de SOAT
                     <select name="tipoSoat" required>
                         <option value="" selected disabled>Seleccionar</option>
@@ -2130,6 +2133,12 @@
             return fecha;
         }
 
+        function formatearCostoApeseg(valor) {
+            if (valor === null || valor === undefined || valor === '') return 'Sin costo';
+            const costo = Number(valor);
+            return Number.isFinite(costo) ? `S/ ${costo.toFixed(2)}` : 'Sin costo';
+        }
+
         function etiquetaClaseVehiculo(clase) {
             const etiquetas = {
                 AUTO: 'AUTOMÓVIL',
@@ -2256,7 +2265,7 @@
                     const fechaInicio = formatearFechaApeseg(registro.fecha_inicio);
                     const fechaFin = formatearFechaApeseg(registro.fecha_fin);
                     const tipoSoat = registro.tipo_soat === 'DIGITAL' ? 'Digital' : registro.tipo_soat === 'FISICO' ? 'Físico' : 'Sin tipo';
-                    item.textContent = `${tipoSoat} · Clase ${etiquetaClaseVehiculo(registro.clase) || 'Sin clase'} · ${registro.compania || 'Aseguradora'} · Póliza ${registro.numero_poliza || '—'} · ${registro.estado || '—'} · Vigencia: ${fechaInicio} al ${fechaFin}`;
+                    item.textContent = `${tipoSoat} · Clase ${etiquetaClaseVehiculo(registro.clase) || 'Sin clase'} · ${registro.compania || 'Aseguradora'} · Póliza ${registro.numero_poliza || '—'} · Costo ${formatearCostoApeseg(registro.costo)} · ${registro.estado || '—'} · Vigencia: ${fechaInicio} al ${fechaFin}`;
 
                     if (Number.isSafeInteger(Number(registro.id)) && Number(registro.id) > 0) {
                         const itemHeader = document.createElement('div');

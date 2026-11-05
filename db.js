@@ -151,11 +151,15 @@ async function initDB(databaseUrl) {
                     fecha_inicio DATE NOT NULL,
                     fecha_fin DATE NOT NULL,
                     tipo_soat VARCHAR(10),
+                    costo NUMERIC(10,2),
                     creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
 
                 ALTER TABLE registros_apeseg
                     ADD COLUMN IF NOT EXISTS tipo_soat VARCHAR(10);
+
+                ALTER TABLE registros_apeseg
+                    ADD COLUMN IF NOT EXISTS costo NUMERIC(10,2);
 
                 ALTER TABLE registros_apeseg
                     ADD COLUMN IF NOT EXISTS clase VARCHAR(50);
@@ -547,7 +551,8 @@ async function buscarVentasPorPlaca(placa) {
 async function registrarRegistroApeseg(registro) {
     if (!registro.placa || !registro.clase || !registro.compania || !registro.numeroPoliza ||
         !registro.estado || !registro.fechaCreacion || !registro.fechaInicio || !registro.fechaFin ||
-        !['DIGITAL', 'FISICO'].includes(registro.tipoSoat)) {
+        !['DIGITAL', 'FISICO'].includes(registro.tipoSoat) ||
+        !Number.isFinite(Number(registro.costo)) || Number(registro.costo) < 0) {
         return null;
     }
     const placa = normalizarPlaca(registro.placa);
@@ -555,13 +560,13 @@ async function registrarRegistroApeseg(registro) {
     if (usePostgres && pool) {
         try {
             const res = await pool.query(`
-                INSERT INTO registros_apeseg (placa, clase, compania, numero_poliza, estado, fecha_inicio, fecha_fin, tipo_soat, creado_en)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::date + TIME '12:00:00')
+                INSERT INTO registros_apeseg (placa, clase, compania, numero_poliza, estado, fecha_inicio, fecha_fin, tipo_soat, costo, creado_en)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::date + TIME '12:00:00')
                 RETURNING *
             `, [
                 placa, registro.clase, registro.compania, registro.numeroPoliza,
                 registro.estado, registro.fechaInicio, registro.fechaFin,
-                registro.tipoSoat, registro.fechaCreacion
+                registro.tipoSoat, Number(registro.costo), registro.fechaCreacion
             ]);
             return res.rows[0];
         } catch (e) {
@@ -582,6 +587,7 @@ async function registrarRegistroApeseg(registro) {
         fecha_inicio: registro.fechaInicio,
         fecha_fin: registro.fechaFin,
         tipo_soat: registro.tipoSoat,
+        costo: Number(registro.costo),
         creado_en: `${registro.fechaCreacion}T12:00:00.000Z`
     };
     db.registrosApeseg.push(nuevoRegistro);
