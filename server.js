@@ -115,15 +115,7 @@ const MIME_TYPES = {
 };
 
 function normalizarPlaca(p) {
-    if (!p) return "";
-    const clean = p.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
-    if (clean.length === 6) {
-        if (/^\d{4}[A-Z0-9]{2}$/.test(clean)) {
-            return clean.substring(0, 4) + '-' + clean.substring(4);
-        }
-        return clean.substring(0, 3) + '-' + clean.substring(3);
-    }
-    return p.toUpperCase();
+    return DB.normalizarPlaca(p);
 }
 
 function esPlacaMoto(p) {
@@ -414,7 +406,7 @@ const server = http.createServer(async (req, res) => {
                 const aRegistro = v => ({
                     insurer: 'LA POSITIVA SEGUROS Y REASEGUROS',
                     policyNumber: v.numero_poliza,
-                    plate: v.placa || placa,
+                    plate: normalizarPlaca(v.placa || placa),
                     startsAt: soloFecha(v.emitido_en),
                     expiresAt: soloFecha(finDe(v.emitido_en)),
                     status: estadoPorVigencia(
@@ -430,7 +422,7 @@ const server = http.createServer(async (req, res) => {
                 res.end(JSON.stringify({
                     data: {
                         found: true,
-                        plate: v.placa || placa,
+                        plate: normalizarPlaca(v.placa || placa),
                         insurer: 'LA POSITIVA SEGUROS Y REASEGUROS',
                         status: estadoPorVigencia(inicia, vence),
                         startsAt: inicia,

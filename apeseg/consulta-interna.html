@@ -45,7 +45,7 @@
 @media(max-width:420px){.result-card{padding:22px 14px 18px}.result-card>h2{font-size:24px}.result-row{grid-template-columns:40% 60%}.result-label,.result-value{padding:10px;font-size:13px}}
 </style>
 <main><section class="consulta-card" aria-labelledby="consulta-title"><h1 id="consulta-title">Consulta SOAT</h1>
-<form id="form"><div class="plate-field"><label for="plate">N&uacute;mero de Placa</label><input id="plate" required maxlength="9" pattern="[A-Za-z0-9\-]{6,9}" placeholder="Ingresa la placa" autocomplete="off"></div><div class="captcha-block"><label for="captcha">Captcha</label><div class="captcha-row"><input id="captcha" required minlength="5" maxlength="5" autocomplete="off" spellcheck="false" placeholder="Ingresa el captcha"><button id="refresh-captcha" class="captcha-image" type="button" aria-label="Cambiar imagen del captcha" title="Haz clic para cambiar el captcha"><img id="captcha-image" width="130" height="43" alt="Codigo del captcha"></button></div><span id="captcha-error" role="status"></span></div><button id="submit">Consultar</button></form></section>
+<form id="form"><div class="plate-field"><label for="plate">N&uacute;mero de Placa</label><input id="plate" required maxlength="9" pattern="[A-Za-z0-9\-]{6,9}" placeholder="Ingresa la placa, con o sin guion" autocomplete="off"></div><div class="captcha-block"><label for="captcha">Captcha</label><div class="captcha-row"><input id="captcha" required minlength="5" maxlength="5" autocomplete="off" spellcheck="false" placeholder="Ingresa el captcha"><button id="refresh-captcha" class="captcha-image" type="button" aria-label="Cambiar imagen del captcha" title="Haz clic para cambiar el captcha"><img id="captcha-image" width="130" height="43" alt="Codigo del captcha"></button></div><span id="captcha-error" role="status"></span></div><button id="submit">Consultar</button></form></section>
 <section id="notice" class="notice-panel" hidden aria-labelledby="notice-heading" aria-live="polite"><h2 id="notice-heading">Resultado de la consulta</h2><div class="notice-content"><p class="notice-title"><span class="notice-icon" aria-hidden="true">×</span><span id="notice-title"></span></p><p id="notice-description" class="notice-description"></p><button id="back-to-consult" type="button">🔎 Volver a consultar</button></div></section>
 <p role="status" id="message" aria-live="polite"></p><section id="result" class="result-card" hidden aria-labelledby="result-heading"><h2 id="result-heading">Resultado de la Consulta</h2><p id="cancelled-notice" class="cancelled-notice" hidden>Certificado ANULADO. Este certificado no cuenta con cobertura vigente.</p><div id="details" class="result-table"></div><button id="toggle-history" class="history-toggle" type="button">📜 Ver Historial</button></section>
 <section id="history-modal" class="history-modal" hidden role="dialog" aria-modal="true" aria-labelledby="history-heading"><div class="history-dialog"><h2 id="history-heading">Historial de Certificados</h2><div class="history-table"><table><thead><tr><th>Compa&ntilde;&iacute;a</th><th>Estado</th><th>Inicio</th><th>Fin</th><th>Placa</th><th>Certificado</th><th>Uso</th><th>Clase</th><th>Tipo</th><th>Fec. Creaci&oacute;n</th><th>Fec. Anulaci&oacute;n</th><th>Fec. Ctrl. Policial</th><th>N&uacute;mero Asientos</th><th>Modelo Veh&iacute;culo</th><th>Marca</th></tr></thead><tbody id="history"></tbody></table></div><div class="history-actions"><button id="close-history" type="button">Consultar otro SOAT</button></div></div></section>
@@ -53,6 +53,16 @@
 <script>
 const form=document.querySelector('#form'),message=document.querySelector('#message'),result=document.querySelector('#result'),button=document.querySelector('#submit');
 const formCard=document.querySelector('.consulta-card'),notice=document.querySelector('#notice');
+const plateInput=document.querySelector('#plate');
+function normalizarPlaca(value){
+  const clean=value.replace(/[^A-Za-z0-9]/g,'').toUpperCase();
+  if(clean.length===6)return /^\d{4}[A-Z0-9]{2}$/.test(clean)?clean.slice(0,4)+'-'+clean.slice(4):clean.slice(0,3)+'-'+clean.slice(3);
+  if(clean.length===5&&/^\d{3}[A-Z0-9]{2}$/.test(clean))return clean.slice(0,3)+'-'+clean.slice(3);
+  if(clean.length===5&&/^[A-Z]{2}\d{3}$/.test(clean))return clean.slice(0,2)+'-'+clean.slice(2);
+  return clean;
+}
+plateInput.addEventListener('input',()=>{plateInput.value=plateInput.value.toUpperCase().replace(/[^A-Z0-9-]/g,'')});
+plateInput.addEventListener('blur',()=>{if(plateInput.value)plateInput.value=normalizarPlaca(plateInput.value)});
 function showNotice(title,description){document.querySelector('#notice-title').textContent=title;document.querySelector('#notice-description').textContent=description;formCard.hidden=true;result.hidden=true;message.textContent='';notice.hidden=false}
 document.querySelector('#back-to-consult').addEventListener('click',()=>{notice.hidden=true;formCard.hidden=false;document.querySelector('#plate').value='';document.querySelector('#captcha').value='';refreshCaptcha()});
 const historyModal=document.querySelector('#history-modal'),historyTrigger=document.querySelector('#toggle-history');
@@ -155,7 +165,7 @@ form.addEventListener('submit',async event=>{
   historyModal.hidden=true;
   document.querySelector('#cancelled-notice').hidden=true;
   try{
-    const response=await fetch('/api/consulta',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({plate:document.querySelector('#plate').value.trim().toUpperCase(),captcha:document.querySelector('#captcha').value}),cache:'no-store'});
+    const response=await fetch('/api/consulta',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({plate:normalizarPlaca(plateInput.value.trim()),captcha:document.querySelector('#captcha').value}),cache:'no-store'});
     const payload=await response.json();
     if(response.status===503){showNotice('No se pudo verificar la placa','La consulta del registro interno no está disponible en este momento. Inténtalo más tarde.');return}
     if(response.status===400){message.textContent=payload.message||'Verifica el captcha e inténtalo nuevamente.';return}

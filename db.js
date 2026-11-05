@@ -15,6 +15,20 @@ const LOCAL_DB_PATH = path.join(BASE_DIR, 'database_store.json');
 let pool = null;
 let usePostgres = false;
 
+function normalizarPlaca(value) {
+    const clean = String(value || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+    if (clean.length === 6) {
+        return /^\d{4}[A-Z0-9]{2}$/.test(clean)
+            ? `${clean.slice(0, 4)}-${clean.slice(4)}`
+            : `${clean.slice(0, 3)}-${clean.slice(3)}`;
+    }
+    if (clean.length === 5) {
+        if (/^\d{3}[A-Z0-9]{2}$/.test(clean)) return `${clean.slice(0, 3)}-${clean.slice(3)}`;
+        if (/^[A-Z]{2}\d{3}$/.test(clean)) return `${clean.slice(0, 2)}-${clean.slice(2)}`;
+    }
+    return clean;
+}
+
 // -------------------------------------------------------------
 // BASE DE DATOS LOCAL PERSISTENTE (Fallback seguro y autónomo)
 // -------------------------------------------------------------
@@ -302,13 +316,16 @@ async function destruirSesion(token) {
 // -------------------------------------------------------------
 async function obtenerVehiculo(placa) {
     if (!placa) return null;
-    const clean = placa.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+    const normalized = normalizarPlaca(placa);
+    const clean = normalized.replace(/[^A-Z0-9]/g, '');
 
     if (usePostgres && pool) {
         try {
             const res = await pool.query(
-                'SELECT * FROM vehiculos WHERE placa = $1 OR REPLACE(placa, \'-\', \'\') = $2',
-                [placa, clean]
+                `SELECT * FROM vehiculos
+                 WHERE REGEXP_REPLACE(UPPER(placa), '[^A-Z0-9]', '', 'g') = $1
+                 LIMIT 1`,
+                [clean]
             );
             if (res.rows.length > 0) {
                 const r = res.rows[0];
@@ -334,12 +351,15 @@ async function obtenerVehiculo(placa) {
     }
 
     const db = cargarBaseLocal();
-    return db.vehiculos[placa] || db.vehiculos[clean] || null;
+    const vehicles = db.vehiculos || {};
+    return vehicles[normalized] || vehicles[clean] ||
+        Object.values(vehicles).find(vehicle => normalizarPlaca(vehicle.placa) === normalized) || null;
 }
 
 async function guardarVehiculo(v) {
     if (!v || !v.placa) return false;
-    const clean = v.placa.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+    const placa = normalizarPlaca(v.placa);
+    const clean = placa.replace(/[^A-Z0-9]/g, '');
 
     if (usePostgres && pool) {
         try {
@@ -361,7 +381,7 @@ async function guardarVehiculo(v) {
                     monto = EXCLUDED.monto,
                     actualizado_en = CURRENT_TIMESTAMP
             `, [
-                v.placa, v.clase || 'AUTO', v.marca || '', v.modelo || '', v.modeloEsp || '',
+                placa, v.clase || 'AUTO', v.marca || '', v.modelo || '', v.modeloEsp || '',
                 v.serie || '', v.anio || '', String(v.asientos || '5'), v.uso || 'PARTICULAR',
                 v.categoria || 'M1', v.version || 'STD', v.zona || 'TACNA', v.monto || ''
             ]);
@@ -372,8 +392,10 @@ async function guardarVehiculo(v) {
     }
 
     const db = cargarBaseLocal();
-    db.vehiculos[v.placa] = v;
-    db.vehiculos[clean] = v;
+    if (!db.vehiculos) db.vehiculos = {};
+    const normalizedVehicle = { ...v, placa };
+    db.vehiculos[placa] = normalizedVehicle;
+    db.vehiculos[clean] = normalizedVehicle;
     guardarBaseLocal(db);
     return true;
 }
@@ -383,6 +405,7 @@ async function guardarVehiculo(v) {
 // -------------------------------------------------------------
 async function registrarVenta(venta) {
     if (!venta.placa || !venta.numeroPoliza) return null;
+    const placa = normalizarPlaca(venta.placa);
 
     if (usePostgres && pool) {
         try {
@@ -391,7 +414,7 @@ async function registrarVenta(venta) {
                 VALUES ($1, $2, $3, $4, $5, $6)
                 RETURNING *
             `, [
-                venta.placa, venta.numeroPoliza, venta.contratanteNombre,
+                placa, venta.numeroPoliza, venta.contratanteNombre,
                 venta.contratanteDocumento, venta.monto, venta.formaPago
             ]);
             return res.rows[0];
@@ -403,7 +426,7 @@ async function registrarVenta(venta) {
     const db = cargarBaseLocal();
     const nuevaVenta = {
         id: db.ventas.length + 1,
-        placa: venta.placa,
+        placa,
         numero_poliza: venta.numeroPoliza,
         contratante_nombre: venta.contratanteNombre,
         contratante_documento: venta.contratanteDocumento,
@@ -430,14 +453,14 @@ async function listarVentas() {
 }
 
 async function buscarVentasPorPlaca(placa) {
-    const clean = String(placa || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+    const clean = normalizarPlaca(placa).replace(/[^A-Z0-9]/g, '');
     if (!clean) return [];
 
     if (usePostgres && pool) {
         try {
             const res = await pool.query(
                 `SELECT * FROM ventas
-                 WHERE REPLACE(UPPER(placa), '-', '') = $1
+                 WHERE REGEXP_REPLACE(UPPER(placa), '[^A-Z0-9]', '', 'g') = $1
                  ORDER BY emitido_en DESC`,
                 [clean]
             );
@@ -458,6 +481,7 @@ async function registrarRegistroApeseg(registro) {
         !registro.estado || !registro.fechaInicio || !registro.fechaFin) {
         return null;
     }
+    const placa = normalizarPlaca(registro.placa);
 
     if (usePostgres && pool) {
         try {
@@ -466,7 +490,7 @@ async function registrarRegistroApeseg(registro) {
                 VALUES ($1, $2, $3, $4, $5, $6)
                 RETURNING *
             `, [
-                registro.placa, registro.compania, registro.numeroPoliza,
+                placa, registro.compania, registro.numeroPoliza,
                 registro.estado, registro.fechaInicio, registro.fechaFin
             ]);
             return res.rows[0];
@@ -480,7 +504,7 @@ async function registrarRegistroApeseg(registro) {
     if (!Array.isArray(db.registrosApeseg)) db.registrosApeseg = [];
     const nuevoRegistro = {
         id: db.registrosApeseg.reduce((maxId, item) => Math.max(maxId, Number(item.id) || 0), 0) + 1,
-        placa: registro.placa,
+        placa,
         compania: registro.compania,
         numero_poliza: registro.numeroPoliza,
         estado: registro.estado,
@@ -509,6 +533,7 @@ async function listarRegistrosApeseg() {
 }
 
 module.exports = {
+    normalizarPlaca,
     initDB,
     autenticarUsuario,
     crearSesion,

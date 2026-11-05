@@ -2187,6 +2187,7 @@
             const submit = form.querySelector('button[type="submit"]');
             const error = document.getElementById('apesegFormError');
             const registro = Object.fromEntries(new FormData(form).entries());
+            registro.placa = normalizarPlaca(registro.placa || '');
             error.textContent = '';
             submit.disabled = true;
 
