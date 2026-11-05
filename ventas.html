@@ -1701,11 +1701,31 @@
                 <label class="apeseg-form-field">Placa
                     <input id="apesegPlaca" name="placa" maxlength="9" readonly required />
                 </label>
+                <label class="apeseg-form-field">Clase
+                    <select name="clase" required>
+                        <option value="" selected disabled>Seleccionar</option>
+                        <option value="AUTO">AUTOMÓVIL</option>
+                        <option value="CAMIONETA">CAMIONETA</option>
+                        <option value="MOTO">MOTO</option>
+                        <option value="MOTOTAXI">MOTOTAXI</option>
+                        <option value="STATION WAGON">STATION WAGON</option>
+                        <option value="CAMION">CAMIÓN</option>
+                        <option value="MICROBUS">MICROBÚS</option>
+                        <option value="OMNIBUS">ÓMNIBUS</option>
+                    </select>
+                </label>
                 <label class="apeseg-form-field">Compañía aseguradora
                     <input name="compania" maxlength="100" required />
                 </label>
                 <label class="apeseg-form-field">N° de póliza / certificado
                     <input name="numeroPoliza" maxlength="100" required />
+                </label>
+                <label class="apeseg-form-field">Tipo de SOAT
+                    <select name="tipoSoat" required>
+                        <option value="" selected disabled>Seleccionar</option>
+                        <option value="DIGITAL">Digital</option>
+                        <option value="FISICO">Físico</option>
+                    </select>
                 </label>
                 <label class="apeseg-form-field">Fecha de creación
                     <input name="fechaCreacion" type="date" required />
@@ -2028,6 +2048,7 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             placa,
+                            clase: document.getElementById('cmbClase').value,
                             contratanteNombre: contratante,
                             contratanteDocumento: documento,
                             monto,
@@ -2067,6 +2088,28 @@
             }
         }
 
+        function formatearFechaApeseg(valor) {
+            if (!valor) return '';
+            var fecha = String(valor).trim();
+            var fechaIso = fecha.match(/^(\d{4})-(\d{2})-(\d{2})(?:$|T)/);
+            if (fechaIso) return fechaIso[3] + '/' + fechaIso[2] + '/' + fechaIso[1];
+
+            var fechaLatam = fecha.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+            if (fechaLatam) return fechaLatam[0];
+            return fecha;
+        }
+
+        function etiquetaClaseVehiculo(clase) {
+            const etiquetas = {
+                AUTO: 'AUTOMÓVIL',
+                CAMION: 'CAMIÓN',
+                MICROBUS: 'MICROBÚS',
+                OMNIBUS: 'ÓMNIBUS'
+            };
+            const valor = String(clase || '').trim().toUpperCase();
+            return etiquetas[valor] || valor;
+        }
+
         async function cargarListaVentas() {
             const tbody = document.getElementById('tbodyListaVentas');
             if (!tbody) return;
@@ -2093,8 +2136,10 @@
                     addCell(v.numero_poliza || '—');
                     addCell(v.placa);
                     addCell(v.contratante_nombre || '—');
-                    addCell(v.registro_apeseg_sin_venta ? 'REGISTRO APESEG' : 'SOAT ELECTRÓNICO');
-                    addCell(v.emitido_en ? new Date(v.emitido_en).toLocaleDateString() : '');
+                    addCell(v.clase
+                        ? etiquetaClaseVehiculo(v.clase)
+                        : (v.registro_apeseg_sin_venta ? 'REGISTRO APESEG' : 'SOAT ELECTRÓNICO'));
+                    addCell(formatearFechaApeseg(v.emitido_en));
                     const monto = Number.parseFloat(v.monto);
                     addCell(Number.isFinite(monto) ? `S/ ${monto.toFixed(2)}` : '—');
 
@@ -2143,21 +2188,28 @@
             title.textContent = `Registros de ${venta.placa || 'la placa'}`;
             tooltip.appendChild(title);
 
-            const note = document.createElement('p');
-            note.className = 'apeseg-tooltip-note';
-            note.textContent = 'Datos ingresados manualmente; no verificados con APESEG.';
-            tooltip.appendChild(note);
+            if (!venta.registro_apeseg_sin_venta) {
+                const emitted = document.createElement('div');
+                emitted.className = 'apeseg-tooltip-record';
+                emitted.textContent = `SOAT Digital · Póliza ${venta.numero_poliza || '—'} · Emitido ${formatearFechaApeseg(venta.emitido_en)}`;
+                tooltip.appendChild(emitted);
+            }
 
             if (registros.length) {
+                const note = document.createElement('p');
+                note.className = 'apeseg-tooltip-note';
+                note.textContent = 'Registros ingresados manualmente; no verificados con APESEG.';
+                tooltip.appendChild(note);
                 registros.forEach(registro => {
                     const item = document.createElement('div');
                     item.className = 'apeseg-tooltip-record';
-                    const fechaInicio = registro.fecha_inicio || '';
-                    const fechaFin = registro.fecha_fin || '';
-                    item.textContent = `${registro.compania || 'Aseguradora'} · Póliza ${registro.numero_poliza || '—'} · ${registro.estado || '—'} · Vigencia: ${fechaInicio} al ${fechaFin}`;
+                    const fechaInicio = formatearFechaApeseg(registro.fecha_inicio);
+                    const fechaFin = formatearFechaApeseg(registro.fecha_fin);
+                    const tipoSoat = registro.tipo_soat === 'DIGITAL' ? 'Digital' : registro.tipo_soat === 'FISICO' ? 'Físico' : 'Sin tipo';
+                    item.textContent = `${tipoSoat} · Clase ${etiquetaClaseVehiculo(registro.clase) || 'Sin clase'} · ${registro.compania || 'Aseguradora'} · Póliza ${registro.numero_poliza || '—'} · ${registro.estado || '—'} · Vigencia: ${fechaInicio} al ${fechaFin}`;
                     tooltip.appendChild(item);
                 });
-            } else {
+            } else if (venta.registro_apeseg_sin_venta) {
                 const empty = document.createElement('p');
                 empty.className = 'apeseg-tooltip-note';
                 empty.textContent = 'Aún no hay registros para esta placa.';
@@ -2168,18 +2220,19 @@
             addButton.type = 'button';
             addButton.className = 'apeseg-tooltip-add';
             addButton.textContent = 'Agregar registro';
-            addButton.addEventListener('click', () => abrirModalRegistroApeseg(venta.placa));
+            addButton.addEventListener('click', () => abrirModalRegistroApeseg(venta.placa, venta.clase));
             tooltip.appendChild(addButton);
             wrapper.appendChild(tooltip);
             td.appendChild(wrapper);
             return td;
         }
 
-        function abrirModalRegistroApeseg(placa) {
+        function abrirModalRegistroApeseg(placa, clase) {
             const form = document.getElementById('formRegistroApeseg');
             form.reset();
             form.elements.placa.value = placa || '';
             form.elements.placa.readOnly = Boolean(placa);
+            form.elements.clase.value = clase || '';
             const today = new Date();
             form.elements.fechaCreacion.value = [
                 today.getFullYear(),

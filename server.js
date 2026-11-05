@@ -863,7 +863,9 @@ const server = http.createServer(async (req, res) => {
             const placa = normalizarPlaca(typeof data.placa === 'string' ? data.placa.trim() : '');
             const compania = typeof data.compania === 'string' ? data.compania.trim() : '';
             const numeroPoliza = typeof data.numeroPoliza === 'string' ? data.numeroPoliza.trim() : '';
+            const clase = typeof data.clase === 'string' ? data.clase.trim() : '';
             const estado = typeof data.estado === 'string' ? data.estado.trim().toUpperCase() : '';
+            const tipoSoat = typeof data.tipoSoat === 'string' ? data.tipoSoat.trim().toUpperCase() : '';
             const fechaCreacion = typeof data.fechaCreacion === 'string' ? data.fechaCreacion : '';
             const fechaInicio = typeof data.fechaInicio === 'string' ? data.fechaInicio : '';
             const fechaFin = typeof data.fechaFin === 'string' ? data.fechaFin : '';
@@ -877,20 +879,24 @@ const server = http.createServer(async (req, res) => {
             if (placaLimpia.length < 6 || placaLimpia.length > 9 ||
                 !compania || compania.length > 100 ||
                 !numeroPoliza || numeroPoliza.length > 100 ||
+                !clase || clase.length > 50 ||
+                !['DIGITAL', 'FISICO'].includes(tipoSoat) ||
                 !estadosValidos.includes(estado) ||
                 !fechaValida(fechaCreacion) || !fechaValida(fechaInicio) ||
                 !fechaValida(fechaFin) || fechaInicio > fechaFin) {
                 res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
-                res.end(JSON.stringify({ error: 'Completa placa, compañía, póliza, estado y vigencias válidas.' }));
+                res.end(JSON.stringify({ error: 'Completa placa, clase, compañía, póliza, tipo de SOAT, estado y vigencias válidas.' }));
                 return;
             }
 
             try {
                 const registro = await DB.registrarRegistroApeseg({
                     placa,
+                    clase,
                     compania,
                     numeroPoliza,
                     estado,
+                    tipoSoat,
                     fechaCreacion,
                     fechaInicio,
                     fechaFin
@@ -940,7 +946,7 @@ const server = http.createServer(async (req, res) => {
                     ventasConRegistros.push({
                         placa: registros[0].placa,
                         contratante_nombre: '—',
-                        clase: 'REGISTRO APESEG',
+                        clase: registros[0].clase || 'REGISTRO APESEG',
                         emitido_en: registros[0].creado_en,
                         monto: null,
                         numero_poliza: null,

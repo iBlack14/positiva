@@ -132,6 +132,7 @@ async function initDB(databaseUrl) {
                     id SERIAL PRIMARY KEY,
                     placa VARCHAR(20),
                     numero_poliza VARCHAR(50),
+                    clase VARCHAR(50),
                     contratante_nombre VARCHAR(150),
                     contratante_documento VARCHAR(30),
                     monto NUMERIC(10,2),
@@ -142,13 +143,24 @@ async function initDB(databaseUrl) {
                 CREATE TABLE IF NOT EXISTS registros_apeseg (
                     id SERIAL PRIMARY KEY,
                     placa VARCHAR(20) NOT NULL,
+                    clase VARCHAR(50) NOT NULL,
                     compania VARCHAR(100) NOT NULL,
                     numero_poliza VARCHAR(100) NOT NULL,
                     estado VARCHAR(30) NOT NULL,
                     fecha_inicio DATE NOT NULL,
                     fecha_fin DATE NOT NULL,
+                    tipo_soat VARCHAR(10),
                     creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
+
+                ALTER TABLE registros_apeseg
+                    ADD COLUMN IF NOT EXISTS tipo_soat VARCHAR(10);
+
+                ALTER TABLE registros_apeseg
+                    ADD COLUMN IF NOT EXISTS clase VARCHAR(50);
+
+                ALTER TABLE ventas
+                    ADD COLUMN IF NOT EXISTS clase VARCHAR(50);
             `);
 
             // Asegurar usuario admin por defecto en PostgreSQL
@@ -410,11 +422,11 @@ async function registrarVenta(venta) {
     if (usePostgres && pool) {
         try {
             const res = await pool.query(`
-                INSERT INTO ventas (placa, numero_poliza, contratante_nombre, contratante_documento, monto, forma_pago)
-                VALUES ($1, $2, $3, $4, $5, $6)
+                INSERT INTO ventas (placa, numero_poliza, clase, contratante_nombre, contratante_documento, monto, forma_pago)
+                VALUES ($1, $2, $3, $4, $5, $6, $7)
                 RETURNING *
             `, [
-                placa, venta.numeroPoliza, venta.contratanteNombre,
+                placa, venta.numeroPoliza, venta.clase, venta.contratanteNombre,
                 venta.contratanteDocumento, venta.monto, venta.formaPago
             ]);
             return res.rows[0];
@@ -428,6 +440,7 @@ async function registrarVenta(venta) {
         id: db.ventas.length + 1,
         placa,
         numero_poliza: venta.numeroPoliza,
+        clase: venta.clase,
         contratante_nombre: venta.contratanteNombre,
         contratante_documento: venta.contratanteDocumento,
         monto: venta.monto,
@@ -477,8 +490,9 @@ async function buscarVentasPorPlaca(placa) {
 }
 
 async function registrarRegistroApeseg(registro) {
-    if (!registro.placa || !registro.compania || !registro.numeroPoliza ||
-        !registro.estado || !registro.fechaCreacion || !registro.fechaInicio || !registro.fechaFin) {
+    if (!registro.placa || !registro.clase || !registro.compania || !registro.numeroPoliza ||
+        !registro.estado || !registro.fechaCreacion || !registro.fechaInicio || !registro.fechaFin ||
+        !['DIGITAL', 'FISICO'].includes(registro.tipoSoat)) {
         return null;
     }
     const placa = normalizarPlaca(registro.placa);
@@ -486,12 +500,13 @@ async function registrarRegistroApeseg(registro) {
     if (usePostgres && pool) {
         try {
             const res = await pool.query(`
-                INSERT INTO registros_apeseg (placa, compania, numero_poliza, estado, fecha_inicio, fecha_fin, creado_en)
-                VALUES ($1, $2, $3, $4, $5, $6, $7::date + TIME '12:00:00')
+                INSERT INTO registros_apeseg (placa, clase, compania, numero_poliza, estado, fecha_inicio, fecha_fin, tipo_soat, creado_en)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::date + TIME '12:00:00')
                 RETURNING *
             `, [
-                placa, registro.compania, registro.numeroPoliza,
-                registro.estado, registro.fechaInicio, registro.fechaFin, registro.fechaCreacion
+                placa, registro.clase, registro.compania, registro.numeroPoliza,
+                registro.estado, registro.fechaInicio, registro.fechaFin,
+                registro.tipoSoat, registro.fechaCreacion
             ]);
             return res.rows[0];
         } catch (e) {
@@ -505,11 +520,13 @@ async function registrarRegistroApeseg(registro) {
     const nuevoRegistro = {
         id: db.registrosApeseg.reduce((maxId, item) => Math.max(maxId, Number(item.id) || 0), 0) + 1,
         placa,
+        clase: registro.clase,
         compania: registro.compania,
         numero_poliza: registro.numeroPoliza,
         estado: registro.estado,
         fecha_inicio: registro.fechaInicio,
         fecha_fin: registro.fechaFin,
+        tipo_soat: registro.tipoSoat,
         creado_en: `${registro.fechaCreacion}T12:00:00.000Z`
     };
     db.registrosApeseg.push(nuevoRegistro);
