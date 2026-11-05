@@ -642,17 +642,138 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
+    if (pathname === '/api/apeseg-registros') {
+        const sesionValida = await DB.validarSesion(sessionToken);
+        if (!sesionValida) {
+            res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({ error: 'Debe iniciar sesión para acceder a los registros APESEG.' }));
+            return;
+        }
+
+        if (req.method === 'GET') {
+            try {
+                const registros = await DB.listarRegistrosApeseg();
+                const placa = normalizarPlaca(String(parsedUrl.query.placa || '').trim());
+                const cleanPlate = placa.replace(/[^A-Z0-9]/g, '');
+                const filtrados = cleanPlate
+                    ? registros.filter(registro => String(registro.placa || '').replace(/[^A-Z0-9]/gi, '').toUpperCase() === cleanPlate)
+                    : registros;
+                res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+                res.end(JSON.stringify(filtrados));
+            } catch (e) {
+                console.error('[APESEG] Error listando registros:', e.message);
+                res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+                res.end(JSON.stringify({ error: 'No se pudieron cargar los registros APESEG.' }));
+            }
+            return;
+        }
+
+        if (req.method !== 'POST') {
+            res.writeHead(405, { 'Content-Type': 'application/json; charset=utf-8', Allow: 'GET, POST' });
+            res.end(JSON.stringify({ error: 'Método no permitido.' }));
+            return;
+        }
+
+        let body = '';
+        let bodyTooLarge = false;
+        req.on('data', chunk => {
+            if (body.length + chunk.length > 8192) {
+                bodyTooLarge = true;
+                return;
+            }
+            body += chunk;
+        });
+        req.on('end', async () => {
+            if (bodyTooLarge) {
+                res.writeHead(413, { 'Content-Type': 'application/json; charset=utf-8' });
+                res.end(JSON.stringify({ error: 'Solicitud demasiado grande.' }));
+                return;
+            }
+
+            let data;
+            try {
+                data = JSON.parse(body);
+            } catch {
+                res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+                res.end(JSON.stringify({ error: 'Solicitud inválida.' }));
+                return;
+            }
+
+            const placa = normalizarPlaca(typeof data.placa === 'string' ? data.placa.trim() : '');
+            const compania = typeof data.compania === 'string' ? data.compania.trim() : '';
+            const numeroPoliza = typeof data.numeroPoliza === 'string' ? data.numeroPoliza.trim() : '';
+            const estado = typeof data.estado === 'string' ? data.estado.trim().toUpperCase() : '';
+            const fechaInicio = typeof data.fechaInicio === 'string' ? data.fechaInicio : '';
+            const fechaFin = typeof data.fechaFin === 'string' ? data.fechaFin : '';
+            const placaLimpia = placa.replace(/[^A-Z0-9]/g, '');
+            const fechaValida = value =>
+                /^\d{4}-\d{2}-\d{2}$/.test(value) &&
+                !Number.isNaN(Date.parse(`${value}T00:00:00Z`)) &&
+                new Date(`${value}T00:00:00Z`).toISOString().slice(0, 10) === value;
+            const estadosValidos = ['VIGENTE', 'VENCIDO', 'AUN_NO_VIGENTE', 'ANULADO'];
+
+            if (placaLimpia.length < 6 || placaLimpia.length > 9 ||
+                !compania || compania.length > 100 ||
+                !numeroPoliza || numeroPoliza.length > 100 ||
+                !estadosValidos.includes(estado) ||
+                !fechaValida(fechaInicio) || !fechaValida(fechaFin) || fechaInicio > fechaFin) {
+                res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+                res.end(JSON.stringify({ error: 'Completa placa, compañía, póliza, estado y vigencias válidas.' }));
+                return;
+            }
+
+            try {
+                const registro = await DB.registrarRegistroApeseg({
+                    placa,
+                    compania,
+                    numeroPoliza,
+                    estado,
+                    fechaInicio,
+                    fechaFin
+                });
+                res.writeHead(201, { 'Content-Type': 'application/json; charset=utf-8' });
+                res.end(JSON.stringify({ success: true, registro }));
+            } catch (e) {
+                console.error('[APESEG] Error guardando registro:', e.message);
+                res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+                res.end(JSON.stringify({ error: 'No se pudo guardar el registro APESEG.' }));
+            }
+        });
+        return;
+    }
+
     // ==========================================
     // 5.2 ENDPOINT: Listar ventas
     // ==========================================
     if (pathname === '/api/ventas' && req.method === 'GET') {
+        const sesionValida = await DB.validarSesion(sessionToken);
+        if (!sesionValida) {
+            res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({ error: 'Debe iniciar sesión para consultar las ventas.' }));
+            return;
+        }
+
         try {
-            const ventas = await DB.listarVentas();
+            const [ventas, registrosApeseg] = await Promise.all([
+                DB.listarVentas(),
+                DB.listarRegistrosApeseg()
+            ]);
+            const registrosPorPlaca = new Map();
+            registrosApeseg.forEach(registro => {
+                const placa = String(registro.placa || '').replace(/[^A-Z0-9]/gi, '').toUpperCase();
+                if (!registrosPorPlaca.has(placa)) registrosPorPlaca.set(placa, []);
+                registrosPorPlaca.get(placa).push(registro);
+            });
+            const ventasConRegistros = ventas.map(venta => {
+                const placa = String(venta.placa || '').replace(/[^A-Z0-9]/gi, '').toUpperCase();
+                return { ...venta, registros_apeseg: registrosPorPlaca.get(placa) || [] };
+            });
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify(ventas));
+            res.end(JSON.stringify(ventasConRegistros));
         } catch (e) {
+            console.error('[VENTAS] Error listando ventas:', e.message);
             res.writeHead(500, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ error: e.message }));
+            res.end(JSON.stringify({ error: 'No se pudieron cargar las ventas.' }));
         }
         return;
     }

@@ -660,6 +660,119 @@
             background-color: #fff4f0;
         }
 
+        .apeseg-hover {
+            position: relative;
+            display: inline-flex;
+        }
+
+        .apeseg-trigger {
+            border: 1px solid #00a89f;
+            border-radius: 12px;
+            padding: 3px 9px;
+            background: #e6f9f8;
+            color: #007f79;
+            font-size: 10px;
+            cursor: pointer;
+        }
+
+        .apeseg-tooltip {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            z-index: 20;
+            width: min(340px, 80vw);
+            max-height: 260px;
+            overflow-y: auto;
+            padding: 12px;
+            border: 1px solid #d5dadd;
+            border-radius: 6px;
+            background: #fff;
+            box-shadow: 0 5px 16px rgba(0, 0, 0, 0.18);
+            color: #333;
+            white-space: normal;
+            text-align: left;
+        }
+
+        .apeseg-hover:hover .apeseg-tooltip,
+        .apeseg-hover:focus-within .apeseg-tooltip {
+            display: block;
+        }
+
+        .apeseg-tooltip-title {
+            margin: 0 0 8px;
+            color: #007f79;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .apeseg-tooltip-note {
+            margin: 0 0 8px;
+            color: #666;
+            font-size: 10px;
+            line-height: 1.4;
+        }
+
+        .apeseg-tooltip-record {
+            padding: 7px 0;
+            border-top: 1px solid #eee;
+            font-size: 11px;
+            line-height: 1.5;
+        }
+
+        .apeseg-tooltip-add {
+            margin-top: 8px;
+            border: 0;
+            padding: 5px 9px;
+            border-radius: 14px;
+            background: #00a89f;
+            color: #fff;
+            font-size: 10px;
+            cursor: pointer;
+        }
+
+        .apeseg-form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+            padding: 16px 18px;
+        }
+
+        .apeseg-form-field {
+            display: grid;
+            gap: 5px;
+            color: #555;
+            font-size: 12px;
+        }
+
+        .apeseg-form-field input,
+        .apeseg-form-field select {
+            width: 100%;
+            min-height: 36px;
+            border: 1px solid #cfd4d8;
+            border-radius: 4px;
+            padding: 6px 8px;
+            font: inherit;
+        }
+
+        .apeseg-form-note {
+            margin: 0;
+            padding: 0 18px 12px;
+            color: #666;
+            font-size: 11px;
+        }
+
+        .apeseg-form-error {
+            margin: 0;
+            padding: 0 18px 10px;
+            color: #a52c2c;
+            font-size: 12px;
+        }
+
+        @media(max-width:520px) {
+            .apeseg-form-grid { grid-template-columns: 1fr; gap: 9px; padding: 12px; }
+        }
+
         /* Modal de Alerta / Notificación */
         .modal-alert {
             display: none;
@@ -1554,11 +1667,12 @@
                                 <th>Vigencia</th>
                                 <th>Monto</th>
                                 <th>Estado</th>
+                                <th>APESEG</th>
                             </tr>
                         </thead>
                         <tbody id="tbodyListaVentas">
                             <tr>
-                                <td colspan="7" style="text-align: center; color: #888; padding: 25px;">No se encontraron registros de ventas emitidas.</td>
+                                <td colspan="8" style="text-align: center; color: #888; padding: 25px;">No se encontraron registros de ventas emitidas.</td>
                             </tr>
                         </tbody>
                     </table>
@@ -1568,6 +1682,46 @@
         </div>
 
     </main>
+
+    <div class="emision-review-modal" id="modalRegistroApeseg" role="dialog" aria-modal="true" aria-labelledby="modalRegistroApesegTitulo">
+        <form class="emision-review-box" id="formRegistroApeseg" onsubmit="guardarRegistroApeseg(event)">
+            <div class="emision-review-header">
+                <span id="modalRegistroApesegTitulo">Agregar registro APESEG</span>
+                <button type="button" class="emision-review-close" aria-label="Cerrar" onclick="cerrarModalRegistroApeseg()">×</button>
+            </div>
+            <div class="apeseg-form-grid">
+                <label class="apeseg-form-field">Placa
+                    <input id="apesegPlaca" name="placa" maxlength="9" readonly required />
+                </label>
+                <label class="apeseg-form-field">Compañía aseguradora
+                    <input name="compania" maxlength="100" required />
+                </label>
+                <label class="apeseg-form-field">N° de póliza / certificado
+                    <input name="numeroPoliza" maxlength="100" required />
+                </label>
+                <label class="apeseg-form-field">Estado
+                    <select name="estado" required>
+                        <option value="VIGENTE">Vigente</option>
+                        <option value="VENCIDO">Vencido</option>
+                        <option value="AUN_NO_VIGENTE">Aún no vigente</option>
+                        <option value="ANULADO">Anulado</option>
+                    </select>
+                </label>
+                <label class="apeseg-form-field">Inicio de vigencia
+                    <input name="fechaInicio" type="date" required />
+                </label>
+                <label class="apeseg-form-field">Fin de vigencia
+                    <input name="fechaFin" type="date" required />
+                </label>
+            </div>
+            <p class="apeseg-form-note">Registro ingresado manualmente; no se valida contra el sistema oficial de APESEG.</p>
+            <p class="apeseg-form-error" id="apesegFormError" role="alert"></p>
+            <div class="emision-review-actions">
+                <button type="submit" class="btn-continue">Guardar registro</button>
+                <button type="button" class="btn-cancel" onclick="cerrarModalRegistroApeseg()">Cancelar</button>
+            </div>
+        </form>
+    </div>
 
     <!-- Modal de Alerta / Notificación -->
     <div class="modal-alert" id="modalAlert">
@@ -1903,33 +2057,151 @@
         }
 
         async function cargarListaVentas() {
+            const tbody = document.getElementById('tbodyListaVentas');
+            if (!tbody) return;
+
             try {
                 const response = await fetch('/api/ventas');
+                if (!response.ok) throw new Error(response.status === 401 ? 'Tu sesión venció. Inicia sesión nuevamente.' : 'No se pudieron cargar las ventas.');
                 const ventas = await response.json();
-                const tbody = document.getElementById('tbodyListaVentas');
-                if (!tbody) return;
-                
+
                 if (!ventas || ventas.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #888; padding: 25px;">No se encontraron registros de ventas emitidas.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #888; padding: 25px;">No se encontraron registros de ventas emitidas.</td></tr>';
                     return;
                 }
-                
-                tbody.innerHTML = '';
+
+                tbody.replaceChildren();
                 ventas.forEach(v => {
                     const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                        <td>${v.numero_poliza}</td>
-                        <td>${v.placa}</td>
-                        <td>${v.contratante_nombre}</td>
-                        <td>SOAT ELECTRÓNICO</td>
-                        <td>${new Date(v.emitido_en).toLocaleDateString()}</td>
-                        <td>S/ ${parseFloat(v.monto).toFixed(2)}</td>
-                        <td><span class="label-success" style="background:#4caf50; color:white; padding:2px 6px; border-radius:3px; font-size:10px;">EMITIDO</span></td>
-                    `;
+                    const addCell = value => {
+                        const td = document.createElement('td');
+                        td.textContent = value == null ? '' : String(value);
+                        tr.appendChild(td);
+                        return td;
+                    };
+                    addCell(v.numero_poliza);
+                    addCell(v.placa);
+                    addCell(v.contratante_nombre);
+                    addCell('SOAT ELECTRÓNICO');
+                    addCell(v.emitido_en ? new Date(v.emitido_en).toLocaleDateString() : '');
+                    const monto = Number.parseFloat(v.monto);
+                    addCell(Number.isFinite(monto) ? `S/ ${monto.toFixed(2)}` : '—');
+
+                    const estado = document.createElement('td');
+                    const estadoBadge = document.createElement('span');
+                    estadoBadge.className = 'label-success';
+                    estadoBadge.textContent = 'EMITIDO';
+                    estadoBadge.style.cssText = 'background:#4caf50; color:white; padding:2px 6px; border-radius:3px; font-size:10px;';
+                    estado.appendChild(estadoBadge);
+                    tr.appendChild(estado);
+                    tr.appendChild(crearCeldaApeseg(v));
                     tbody.appendChild(tr);
                 });
             } catch (e) {
-                console.error("Error cargando ventas:", e);
+                console.error('Error cargando ventas:', e);
+                tbody.innerHTML = '';
+                const row = document.createElement('tr');
+                const cell = document.createElement('td');
+                cell.colSpan = 8;
+                cell.style.cssText = 'text-align:center; color:#a52c2c; padding:25px;';
+                cell.textContent = e.message || 'No se pudieron cargar las ventas.';
+                row.appendChild(cell);
+                tbody.appendChild(row);
+            }
+        }
+
+        function crearCeldaApeseg(venta) {
+            const td = document.createElement('td');
+            const wrapper = document.createElement('div');
+            wrapper.className = 'apeseg-hover';
+
+            const registros = Array.isArray(venta.registros_apeseg) ? venta.registros_apeseg : [];
+            const trigger = document.createElement('button');
+            trigger.type = 'button';
+            trigger.className = 'apeseg-trigger';
+            trigger.textContent = registros.length ? `APESEG (${registros.length})` : 'APESEG';
+            trigger.setAttribute('aria-label', `Ver registros APESEG de ${venta.placa || 'la placa'}`);
+            wrapper.appendChild(trigger);
+
+            const tooltip = document.createElement('div');
+            tooltip.className = 'apeseg-tooltip';
+            tooltip.setAttribute('role', 'tooltip');
+
+            const title = document.createElement('p');
+            title.className = 'apeseg-tooltip-title';
+            title.textContent = `Registros de ${venta.placa || 'la placa'}`;
+            tooltip.appendChild(title);
+
+            const note = document.createElement('p');
+            note.className = 'apeseg-tooltip-note';
+            note.textContent = 'Datos ingresados manualmente; no verificados con APESEG.';
+            tooltip.appendChild(note);
+
+            if (registros.length) {
+                registros.forEach(registro => {
+                    const item = document.createElement('div');
+                    item.className = 'apeseg-tooltip-record';
+                    const fechaInicio = registro.fecha_inicio || '';
+                    const fechaFin = registro.fecha_fin || '';
+                    item.textContent = `${registro.compania || 'Aseguradora'} · Póliza ${registro.numero_poliza || '—'} · ${registro.estado || '—'} · Vigencia: ${fechaInicio} al ${fechaFin}`;
+                    tooltip.appendChild(item);
+                });
+            } else {
+                const empty = document.createElement('p');
+                empty.className = 'apeseg-tooltip-note';
+                empty.textContent = 'Aún no hay registros para esta placa.';
+                tooltip.appendChild(empty);
+            }
+
+            const addButton = document.createElement('button');
+            addButton.type = 'button';
+            addButton.className = 'apeseg-tooltip-add';
+            addButton.textContent = 'Agregar registro';
+            addButton.addEventListener('click', () => abrirModalRegistroApeseg(venta.placa));
+            tooltip.appendChild(addButton);
+            wrapper.appendChild(tooltip);
+            td.appendChild(wrapper);
+            return td;
+        }
+
+        function abrirModalRegistroApeseg(placa) {
+            const form = document.getElementById('formRegistroApeseg');
+            form.reset();
+            form.elements.placa.value = placa || '';
+            document.getElementById('apesegFormError').textContent = '';
+            document.getElementById('modalRegistroApeseg').classList.add('show');
+            form.elements.compania.focus();
+        }
+
+        function cerrarModalRegistroApeseg() {
+            document.getElementById('modalRegistroApeseg').classList.remove('show');
+        }
+
+        async function guardarRegistroApeseg(event) {
+            event.preventDefault();
+            const form = event.currentTarget;
+            const submit = form.querySelector('button[type="submit"]');
+            const error = document.getElementById('apesegFormError');
+            const registro = Object.fromEntries(new FormData(form).entries());
+            error.textContent = '';
+            submit.disabled = true;
+
+            try {
+                const response = await fetch('/api/apeseg-registros', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(registro)
+                });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || 'No se pudo guardar el registro.');
+
+                cerrarModalRegistroApeseg();
+                await cargarListaVentas();
+                mostrarMensaje('Registro APESEG agregado al historial de la placa.');
+            } catch (e) {
+                error.textContent = e.message || 'No se pudo guardar el registro.';
+            } finally {
+                submit.disabled = false;
             }
         }
 

@@ -40,7 +40,8 @@ function cargarBaseLocal() {
         ],
         sesiones: [],
         vehiculos: {},
-        ventas: []
+        ventas: [],
+        registrosApeseg: []
     };
 }
 
@@ -59,6 +60,7 @@ function sincronizarVehiculosIniciales(dbLocal) {}
 
 async function initDB(databaseUrl) {
     let localData = cargarBaseLocal();
+    if (!Array.isArray(localData.registrosApeseg)) localData.registrosApeseg = [];
     guardarBaseLocal(localData);
 
     if (databaseUrl && databaseUrl.startsWith('postgres') && pg) {
@@ -121,6 +123,17 @@ async function initDB(databaseUrl) {
                     monto NUMERIC(10,2),
                     forma_pago VARCHAR(50),
                     emitido_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+
+                CREATE TABLE IF NOT EXISTS registros_apeseg (
+                    id SERIAL PRIMARY KEY,
+                    placa VARCHAR(20) NOT NULL,
+                    compania VARCHAR(100) NOT NULL,
+                    numero_poliza VARCHAR(100) NOT NULL,
+                    estado VARCHAR(30) NOT NULL,
+                    fecha_inicio DATE NOT NULL,
+                    fecha_fin DATE NOT NULL,
+                    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
             `);
 
@@ -440,6 +453,61 @@ async function buscarVentasPorPlaca(placa) {
         .sort((a, b) => new Date(b.emitido_en) - new Date(a.emitido_en));
 }
 
+async function registrarRegistroApeseg(registro) {
+    if (!registro.placa || !registro.compania || !registro.numeroPoliza ||
+        !registro.estado || !registro.fechaInicio || !registro.fechaFin) {
+        return null;
+    }
+
+    if (usePostgres && pool) {
+        try {
+            const res = await pool.query(`
+                INSERT INTO registros_apeseg (placa, compania, numero_poliza, estado, fecha_inicio, fecha_fin)
+                VALUES ($1, $2, $3, $4, $5, $6)
+                RETURNING *
+            `, [
+                registro.placa, registro.compania, registro.numeroPoliza,
+                registro.estado, registro.fechaInicio, registro.fechaFin
+            ]);
+            return res.rows[0];
+        } catch (e) {
+            console.error('[DB] Error registrando certificado APESEG en Postgres:', e.message);
+            throw e;
+        }
+    }
+
+    const db = cargarBaseLocal();
+    if (!Array.isArray(db.registrosApeseg)) db.registrosApeseg = [];
+    const nuevoRegistro = {
+        id: db.registrosApeseg.reduce((maxId, item) => Math.max(maxId, Number(item.id) || 0), 0) + 1,
+        placa: registro.placa,
+        compania: registro.compania,
+        numero_poliza: registro.numeroPoliza,
+        estado: registro.estado,
+        fecha_inicio: registro.fechaInicio,
+        fecha_fin: registro.fechaFin,
+        creado_en: new Date().toISOString()
+    };
+    db.registrosApeseg.push(nuevoRegistro);
+    if (!guardarBaseLocal(db)) throw new Error('No se pudo guardar el registro APESEG localmente.');
+    return nuevoRegistro;
+}
+
+async function listarRegistrosApeseg() {
+    if (usePostgres && pool) {
+        try {
+            const res = await pool.query('SELECT * FROM registros_apeseg ORDER BY creado_en DESC');
+            return res.rows;
+        } catch (e) {
+            console.error('[DB] Error listando registros APESEG en Postgres:', e.message);
+            throw e;
+        }
+    }
+
+    const db = cargarBaseLocal();
+    return [...(db.registrosApeseg || [])].reverse();
+}
+
 module.exports = {
     initDB,
     autenticarUsuario,
@@ -451,6 +519,7 @@ module.exports = {
     registrarVenta,
     listarVentas,
     buscarVentasPorPlaca,
+    registrarRegistroApeseg,
+    listarRegistrosApeseg,
     cargarBaseLocal
 };
-
