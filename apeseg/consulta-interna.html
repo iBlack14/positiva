@@ -24,7 +24,8 @@
 .result-label{background:#3f2389;color:#fff}
 .result-value{background:#fafafa}
 .result-status{display:inline-block;padding:4px 10px;border-radius:6px;background:#1da77d;color:#fff;font-weight:700}
-.result-status.expired,.result-status.cancelled{background:#6c757d}
+.result-status.expired{background:#e33f50}
+.result-status.cancelled{background:#6c757d}
 .result-status.pending{background:#e2a72e}
 .history-toggle{display:block;min-height:44px;margin:24px auto 0;padding:0 24px;border:0;border-radius:8px;background:#45258c;color:#fff;font-size:14px;font-weight:700;cursor:pointer}
 .history-toggle:hover{background:#35206d}
@@ -38,7 +39,8 @@
 .history-table td{padding:6px 8px;background:#fff;text-align:center;white-space:nowrap}
 .history-table .status-badge{padding:2px 6px;font-size:10px;color:#fff;background:#e33f50}
 .history-table .status-badge.active{background:#1da77d}
-.history-table .status-badge.expired,.history-table .status-badge.cancelled{background:#6c757d}
+.history-table .status-badge.expired{background:#e33f50}
+.history-table .status-badge.cancelled{background:#6c757d}
 .history-actions{flex:none;display:flex;justify-content:center;padding-top:12px}
 #close-history{min-height:36px;padding:0 18px;border:0;border-radius:7px;background:#45258c;color:#fff;font-size:12px;font-weight:700;cursor:pointer}
 #close-history:hover{background:#35206d}
@@ -95,6 +97,7 @@ function field(record,...keys){for(const key of keys){const value=record[key];if
 function historyCell(value){const td=document.createElement('td');td.textContent=value??'';return td}
 function historyRow(record){
   const tr=document.createElement('tr');
+  const certificateType=field(record,'certificateType','TipoCertificado');
   for(const value of [
     field(record,'insurer','NombreCompania','company'),
     field(record,'status','Estado'),
@@ -104,8 +107,8 @@ function historyRow(record){
     field(record,'policyNumber','NumeroPoliza','NumeroCertificado'),
     field(record,'vehicleUse','NombreUsoVehiculo'),
     field(record,'vehicleClass','NombreClaseVehiculo'),
-    field(record,'certificateType','TipoCertificado'),
-    date(field(record,'createdAt','FechaCreacion'),true),
+    certificateType,
+    date(field(record,'createdAt','FechaCreacion'),certificateType!=='APESEG'),
     date(field(record,'cancelledAt','FechaAnulacion')),
     date(field(record,'policeCheckAt','FechaControlPolicial')),
     field(record,'seats','NumeroAsientos'),
@@ -136,6 +139,7 @@ function addDetail(label,value,isStatus=false){
 }
 function renderResult(data){
   const status=field(data,'status','Estado');
+  const certificateType=field(data,'certificateType','TipoCertificado');
   document.querySelector('#cancelled-notice').hidden=status!=='ANULADO';
   message.textContent='';
   addDetail('Compañía',field(data,'insurer','NombreCompania','company'));
@@ -146,8 +150,8 @@ function renderResult(data){
   addDetail('Certificado',field(data,'policyNumber','NumeroPoliza','NumeroCertificado'));
   addDetail('Uso',field(data,'vehicleUse','NombreUsoVehiculo'));
   addDetail('Clase',field(data,'vehicleClass','NombreClaseVehiculo'));
-  addDetail('Tipo',field(data,'certificateType','TipoCertificado'));
-  addDetail('Fec. Creación',date(field(data,'createdAt','FechaCreacion'),true));
+  addDetail('Tipo',certificateType);
+  addDetail('Fec. Creación',date(field(data,'createdAt','FechaCreacion'),certificateType!=='APESEG'));
   addDetail('Fec. Anulación',date(field(data,'cancelledAt','FechaAnulacion')));
   addDetail('Fec. Control Policial',date(field(data,'policeCheckAt','FechaControlPolicial')));
   addDetail('Número de Asientos',field(data,'seats','NumeroAsientos'));

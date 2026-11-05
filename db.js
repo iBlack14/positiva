@@ -478,7 +478,7 @@ async function buscarVentasPorPlaca(placa) {
 
 async function registrarRegistroApeseg(registro) {
     if (!registro.placa || !registro.compania || !registro.numeroPoliza ||
-        !registro.estado || !registro.fechaInicio || !registro.fechaFin) {
+        !registro.estado || !registro.fechaCreacion || !registro.fechaInicio || !registro.fechaFin) {
         return null;
     }
     const placa = normalizarPlaca(registro.placa);
@@ -486,12 +486,12 @@ async function registrarRegistroApeseg(registro) {
     if (usePostgres && pool) {
         try {
             const res = await pool.query(`
-                INSERT INTO registros_apeseg (placa, compania, numero_poliza, estado, fecha_inicio, fecha_fin)
-                VALUES ($1, $2, $3, $4, $5, $6)
+                INSERT INTO registros_apeseg (placa, compania, numero_poliza, estado, fecha_inicio, fecha_fin, creado_en)
+                VALUES ($1, $2, $3, $4, $5, $6, $7::date + TIME '12:00:00')
                 RETURNING *
             `, [
                 placa, registro.compania, registro.numeroPoliza,
-                registro.estado, registro.fechaInicio, registro.fechaFin
+                registro.estado, registro.fechaInicio, registro.fechaFin, registro.fechaCreacion
             ]);
             return res.rows[0];
         } catch (e) {
@@ -510,7 +510,7 @@ async function registrarRegistroApeseg(registro) {
         estado: registro.estado,
         fecha_inicio: registro.fechaInicio,
         fecha_fin: registro.fechaFin,
-        creado_en: new Date().toISOString()
+        creado_en: `${registro.fechaCreacion}T12:00:00.000Z`
     };
     db.registrosApeseg.push(nuevoRegistro);
     if (!guardarBaseLocal(db)) throw new Error('No se pudo guardar el registro APESEG localmente.');

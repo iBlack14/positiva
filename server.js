@@ -453,7 +453,7 @@ const server = http.createServer(async (req, res) => {
                             vehicleUse: vehiculo.uso || 'PARTICULAR',
                             vehicleClass: vehiculo.clase || '',
                             certificateType: 'APESEG',
-                            createdAt: registro.creado_en ? new Date(registro.creado_en).toISOString() : null,
+                            createdAt: registro.creado_en ? soloFecha(registro.creado_en) : null,
                             cancelledAt: null,
                             policeCheckAt: null,
                             seats: vehiculo.asientos || '',
@@ -737,6 +737,7 @@ const server = http.createServer(async (req, res) => {
             const compania = typeof data.compania === 'string' ? data.compania.trim() : '';
             const numeroPoliza = typeof data.numeroPoliza === 'string' ? data.numeroPoliza.trim() : '';
             const estado = typeof data.estado === 'string' ? data.estado.trim().toUpperCase() : '';
+            const fechaCreacion = typeof data.fechaCreacion === 'string' ? data.fechaCreacion : '';
             const fechaInicio = typeof data.fechaInicio === 'string' ? data.fechaInicio : '';
             const fechaFin = typeof data.fechaFin === 'string' ? data.fechaFin : '';
             const placaLimpia = placa.replace(/[^A-Z0-9]/g, '');
@@ -750,7 +751,8 @@ const server = http.createServer(async (req, res) => {
                 !compania || compania.length > 100 ||
                 !numeroPoliza || numeroPoliza.length > 100 ||
                 !estadosValidos.includes(estado) ||
-                !fechaValida(fechaInicio) || !fechaValida(fechaFin) || fechaInicio > fechaFin) {
+                !fechaValida(fechaCreacion) || !fechaValida(fechaInicio) ||
+                !fechaValida(fechaFin) || fechaInicio > fechaFin) {
                 res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
                 res.end(JSON.stringify({ error: 'Completa placa, compañía, póliza, estado y vigencias válidas.' }));
                 return;
@@ -762,6 +764,7 @@ const server = http.createServer(async (req, res) => {
                     compania,
                     numeroPoliza,
                     estado,
+                    fechaCreacion,
                     fechaInicio,
                     fechaFin
                 });

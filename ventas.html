@@ -1702,6 +1702,9 @@
                 <label class="apeseg-form-field">N° de póliza / certificado
                     <input name="numeroPoliza" maxlength="100" required />
                 </label>
+                <label class="apeseg-form-field">Fecha de creación
+                    <input name="fechaCreacion" type="date" required />
+                </label>
                 <label class="apeseg-form-field">Estado
                     <select name="estado" required>
                         <option value="VIGENTE">Vigente</option>
@@ -2172,6 +2175,12 @@
             form.reset();
             form.elements.placa.value = placa || '';
             form.elements.placa.readOnly = Boolean(placa);
+            const today = new Date();
+            form.elements.fechaCreacion.value = [
+                today.getFullYear(),
+                String(today.getMonth() + 1).padStart(2, '0'),
+                String(today.getDate()).padStart(2, '0')
+            ].join('-');
             document.getElementById('apesegFormError').textContent = '';
             document.getElementById('modalRegistroApeseg').classList.add('show');
             form.elements.compania.focus();
