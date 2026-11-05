@@ -554,6 +554,29 @@ async function listarRegistrosApeseg() {
     return [...(db.registrosApeseg || [])].reverse();
 }
 
+async function eliminarRegistroApeseg(id) {
+    if (!Number.isSafeInteger(id) || id <= 0) return false;
+
+    if (usePostgres && pool) {
+        try {
+            const res = await pool.query('DELETE FROM registros_apeseg WHERE id = $1 RETURNING id', [id]);
+            return res.rowCount > 0;
+        } catch (e) {
+            console.error('[DB] Error eliminando registro APESEG en Postgres:', e.message);
+            throw e;
+        }
+    }
+
+    const db = cargarBaseLocal();
+    const registros = Array.isArray(db.registrosApeseg) ? db.registrosApeseg : [];
+    const registrosActualizados = registros.filter(registro => Number(registro.id) !== id);
+    if (registrosActualizados.length === registros.length) return false;
+
+    db.registrosApeseg = registrosActualizados;
+    if (!guardarBaseLocal(db)) throw new Error('No se pudo eliminar el registro APESEG localmente.');
+    return true;
+}
+
 module.exports = {
     normalizarPlaca,
     initDB,
@@ -568,5 +591,6 @@ module.exports = {
     buscarVentasPorPlaca,
     registrarRegistroApeseg,
     listarRegistrosApeseg,
+    eliminarRegistroApeseg,
     cargarBaseLocal
 };

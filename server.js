@@ -835,8 +835,33 @@ const server = http.createServer(async (req, res) => {
             return;
         }
 
+        if (req.method === 'DELETE') {
+            const idValue = String(parsedUrl.query.id || '');
+            if (!/^[1-9]\d*$/.test(idValue) || !Number.isSafeInteger(Number(idValue))) {
+                res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+                res.end(JSON.stringify({ error: 'El identificador del registro no es válido.' }));
+                return;
+            }
+
+            try {
+                const eliminado = await DB.eliminarRegistroApeseg(Number(idValue));
+                if (!eliminado) {
+                    res.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8' });
+                    res.end(JSON.stringify({ error: 'No se encontró el registro APESEG.' }));
+                    return;
+                }
+                res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+                res.end(JSON.stringify({ success: true }));
+            } catch (e) {
+                console.error('[APESEG] Error eliminando registro:', e.message);
+                res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+                res.end(JSON.stringify({ error: 'No se pudo eliminar el registro APESEG.' }));
+            }
+            return;
+        }
+
         if (req.method !== 'POST') {
-            res.writeHead(405, { 'Content-Type': 'application/json; charset=utf-8', Allow: 'GET, POST' });
+            res.writeHead(405, { 'Content-Type': 'application/json; charset=utf-8', Allow: 'GET, POST, DELETE' });
             res.end(JSON.stringify({ error: 'Método no permitido.' }));
             return;
         }

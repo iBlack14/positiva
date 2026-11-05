@@ -720,6 +720,29 @@
             line-height: 1.5;
         }
 
+        .apeseg-tooltip-record-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .apeseg-tooltip-delete {
+            flex: 0 0 auto;
+            border: 0;
+            padding: 2px 6px;
+            border-radius: 10px;
+            background: #fae8e7;
+            color: #a52c2c;
+            font-size: 10px;
+            cursor: pointer;
+        }
+
+        .apeseg-tooltip-delete:disabled {
+            cursor: wait;
+            opacity: 0.6;
+        }
+
         .apeseg-tooltip-add {
             margin-top: 8px;
             border: 0;
@@ -2216,7 +2239,23 @@
                     const fechaFin = formatearFechaApeseg(registro.fecha_fin);
                     const tipoSoat = registro.tipo_soat === 'DIGITAL' ? 'Digital' : registro.tipo_soat === 'FISICO' ? 'Físico' : 'Sin tipo';
                     item.textContent = `${tipoSoat} · Clase ${etiquetaClaseVehiculo(registro.clase) || 'Sin clase'} · ${registro.compania || 'Aseguradora'} · Póliza ${registro.numero_poliza || '—'} · ${registro.estado || '—'} · Vigencia: ${fechaInicio} al ${fechaFin}`;
-                    tooltip.appendChild(item);
+
+                    if (Number.isSafeInteger(Number(registro.id)) && Number(registro.id) > 0) {
+                        const itemHeader = document.createElement('div');
+                        itemHeader.className = 'apeseg-tooltip-record-header';
+                        itemHeader.appendChild(item);
+
+                        const deleteButton = document.createElement('button');
+                        deleteButton.type = 'button';
+                        deleteButton.className = 'apeseg-tooltip-delete';
+                        deleteButton.textContent = 'Eliminar';
+                        deleteButton.setAttribute('aria-label', `Eliminar registro APESEG ${registro.numero_poliza || ''} de ${venta.placa || 'la placa'}`);
+                        deleteButton.addEventListener('click', () => eliminarRegistroApeseg(registro, venta.placa, deleteButton));
+                        itemHeader.appendChild(deleteButton);
+                        tooltip.appendChild(itemHeader);
+                    } else {
+                        tooltip.appendChild(item);
+                    }
                 });
             } else if (venta.registro_apeseg_sin_venta) {
                 const empty = document.createElement('p');
@@ -2283,6 +2322,26 @@
                 error.textContent = e.message || 'No se pudo guardar el registro.';
             } finally {
                 submit.disabled = false;
+            }
+        }
+
+        async function eliminarRegistroApeseg(registro, placa, button) {
+            const confirmacion = `¿Eliminar el registro APESEG de la placa ${placa || registro.placa} con póliza ${registro.numero_poliza || '—'}? Esta acción no se puede deshacer.`;
+            if (!window.confirm(confirmacion)) return;
+
+            button.disabled = true;
+            try {
+                const response = await fetch(`/api/apeseg-registros?id=${encodeURIComponent(registro.id)}`, {
+                    method: 'DELETE'
+                });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || 'No se pudo eliminar el registro.');
+
+                await cargarListaVentas();
+                mostrarMensaje('Registro APESEG eliminado del historial.');
+            } catch (e) {
+                button.disabled = false;
+                mostrarMensaje(e.message || 'No se pudo eliminar el registro.');
             }
         }
 
