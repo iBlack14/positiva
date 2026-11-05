@@ -405,25 +405,36 @@ const server = http.createServer(async (req, res) => {
                 const soloFecha = d => new Intl.DateTimeFormat('en-CA', {
                     timeZone: 'America/Lima', year: 'numeric', month: '2-digit', day: '2-digit'
                 }).format(new Date(d));
+                const estadoPorVigencia = (inicio, fin) => {
+                    const hoy = soloFecha(new Date());
+                    if (inicio > hoy) return 'AUN_NO_VIGENTE';
+                    if (fin < hoy) return 'VENCIDO';
+                    return 'VIGENTE';
+                };
                 const aRegistro = v => ({
                     insurer: 'LA POSITIVA SEGUROS Y REASEGUROS',
                     policyNumber: v.numero_poliza,
                     plate: v.placa || placa,
-                    status: 'VIGENTE',
                     startsAt: soloFecha(v.emitido_en),
-                    expiresAt: soloFecha(finDe(v.emitido_en))
+                    expiresAt: soloFecha(finDe(v.emitido_en)),
+                    status: estadoPorVigencia(
+                        soloFecha(v.emitido_en),
+                        soloFecha(finDe(v.emitido_en))
+                    )
                 });
 
                 const v = ventas[0];
+                const inicia = soloFecha(v.emitido_en);
+                const vence = soloFecha(finDe(v.emitido_en));
                 res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
                 res.end(JSON.stringify({
                     data: {
                         found: true,
                         plate: v.placa || placa,
                         insurer: 'LA POSITIVA SEGUROS Y REASEGUROS',
-                        status: 'VIGENTE',
-                        startsAt: soloFecha(v.emitido_en),
-                        expiresAt: soloFecha(finDe(v.emitido_en)),
+                        status: estadoPorVigencia(inicia, vence),
+                        startsAt: inicia,
+                        expiresAt: vence,
                         policyNumber: v.numero_poliza,
                         vehicleUse: vehiculo.uso || 'PARTICULAR',
                         vehicleClass: vehiculo.clase || '',
@@ -838,8 +849,19 @@ const server = http.createServer(async (req, res) => {
     // ==========================================
     // 7. SERVIDOR DE ARCHIVOS ESTÁTICOS
     // ==========================================
-    if (['/apeseg', '/apeseg/', '/apeseg/index.html', '/apeseg.html', '/consulta-soat'].includes(pathname)) {
-        res.writeHead(301, { Location: '/consultas-soat/' });
+    const consultaPath = '/pe/consultas-soat';
+    if (pathname === `${consultaPath}/`) {
+        res.writeHead(301, { Location: consultaPath });
+        res.end();
+        return;
+    }
+
+    if ([
+        '/apeseg', '/apeseg/', '/apeseg/index.html', '/apeseg.html',
+        '/consulta-soat', '/consulta-soat/',
+        '/consultas-soat', '/consultas-soat/'
+    ].includes(pathname)) {
+        res.writeHead(301, { Location: consultaPath });
         res.end();
         return;
     }
@@ -849,7 +871,7 @@ const server = http.createServer(async (req, res) => {
 
     // REDIRECCIÓN SIEMPRE A CONSULTAS (Si no es admin)
     if (!isSubdomain && (pathname === '/' || pathname === '')) {
-        res.writeHead(301, { Location: '/consultas-soat/' });
+        res.writeHead(301, { Location: consultaPath });
         res.end();
         return;
     }
@@ -870,8 +892,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     const publicRoutes = {
-        '/consultas-soat': 'apeseg.html',
-        '/consultas-soat/': 'apeseg.html',
+        [consultaPath]: 'apeseg.html',
         '/consulta-interna.html': path.join('apeseg', 'consulta-interna.html'),
         '/admin': 'admin.html',
         '/admin/': 'admin.html'
