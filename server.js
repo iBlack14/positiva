@@ -764,9 +764,26 @@ const server = http.createServer(async (req, res) => {
                 if (!registrosPorPlaca.has(placa)) registrosPorPlaca.set(placa, []);
                 registrosPorPlaca.get(placa).push(registro);
             });
+            const placasConVenta = new Set(ventas.map(venta =>
+                String(venta.placa || '').replace(/[^A-Z0-9]/gi, '').toUpperCase()
+            ));
             const ventasConRegistros = ventas.map(venta => {
                 const placa = String(venta.placa || '').replace(/[^A-Z0-9]/gi, '').toUpperCase();
                 return { ...venta, registros_apeseg: registrosPorPlaca.get(placa) || [] };
+            });
+            registrosPorPlaca.forEach((registros, placa) => {
+                if (!placasConVenta.has(placa)) {
+                    ventasConRegistros.push({
+                        placa: registros[0].placa,
+                        contratante_nombre: '—',
+                        clase: 'REGISTRO APESEG',
+                        emitido_en: registros[0].creado_en,
+                        monto: null,
+                        numero_poliza: null,
+                        registro_apeseg_sin_venta: true,
+                        registros_apeseg: registros
+                    });
+                }
             });
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
             res.end(JSON.stringify(ventasConRegistros));

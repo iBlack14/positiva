@@ -1644,7 +1644,7 @@
         <!-- ======================================================== -->
         <div id="vista-lista-venta" class="seccion-portal" style="display: none;">
             <div class="panel-form">
-                <div class="panel-header-teal">HISTORIAL DE PÓLIZAS EMITIDAS - LISTA DE VENTAS</div>
+                <div class="panel-header-teal">HISTORIAL DE VENTAS Y REGISTROS APESEG</div>
                 <div class="panel-content-body">
                     
                     <div style="display: flex; gap: 15px; align-items: center; margin-bottom: 15px; flex-wrap: wrap;">
@@ -1654,6 +1654,9 @@
                         <input type="date" class="ctrl-input" value="2024-10-07" style="width: 140px;" />
                         <button type="button" class="btn-pill-orange" onclick="mostrarMensaje('Filtrando ventas...')">
                             <i class="icon-filter"></i> Filtrar
+                        </button>
+                        <button type="button" class="btn-pill-teal" onclick="abrirModalRegistroApeseg()">
+                            + Agregar placa APESEG
                         </button>
                     </div>
 
@@ -2079,10 +2082,10 @@
                         tr.appendChild(td);
                         return td;
                     };
-                    addCell(v.numero_poliza);
+                    addCell(v.numero_poliza || '—');
                     addCell(v.placa);
-                    addCell(v.contratante_nombre);
-                    addCell('SOAT ELECTRÓNICO');
+                    addCell(v.contratante_nombre || '—');
+                    addCell(v.registro_apeseg_sin_venta ? 'REGISTRO APESEG' : 'SOAT ELECTRÓNICO');
                     addCell(v.emitido_en ? new Date(v.emitido_en).toLocaleDateString() : '');
                     const monto = Number.parseFloat(v.monto);
                     addCell(Number.isFinite(monto) ? `S/ ${monto.toFixed(2)}` : '—');
@@ -2090,8 +2093,8 @@
                     const estado = document.createElement('td');
                     const estadoBadge = document.createElement('span');
                     estadoBadge.className = 'label-success';
-                    estadoBadge.textContent = 'EMITIDO';
-                    estadoBadge.style.cssText = 'background:#4caf50; color:white; padding:2px 6px; border-radius:3px; font-size:10px;';
+                    estadoBadge.textContent = v.registro_apeseg_sin_venta ? 'REGISTRADO' : 'EMITIDO';
+                    estadoBadge.style.cssText = `background:${v.registro_apeseg_sin_venta ? '#00a89f' : '#4caf50'}; color:white; padding:2px 6px; border-radius:3px; font-size:10px;`;
                     estado.appendChild(estadoBadge);
                     tr.appendChild(estado);
                     tr.appendChild(crearCeldaApeseg(v));
@@ -2168,6 +2171,7 @@
             const form = document.getElementById('formRegistroApeseg');
             form.reset();
             form.elements.placa.value = placa || '';
+            form.elements.placa.readOnly = Boolean(placa);
             document.getElementById('apesegFormError').textContent = '';
             document.getElementById('modalRegistroApeseg').classList.add('show');
             form.elements.compania.focus();
