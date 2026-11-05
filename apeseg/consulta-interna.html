@@ -38,6 +38,7 @@
 .history-table td{padding:6px 8px;background:#fff;text-align:center;white-space:nowrap}
 .history-table .status-badge{padding:2px 6px;font-size:10px;color:#fff;background:#e33f50}
 .history-table .status-badge.active{background:#1da77d}
+.history-table .status-badge.expired,.history-table .status-badge.cancelled{background:#6c757d}
 .history-actions{flex:none;display:flex;justify-content:center;padding-top:12px}
 #close-history{min-height:36px;padding:0 18px;border:0;border-radius:7px;background:#45258c;color:#fff;font-size:12px;font-weight:700;cursor:pointer}
 #close-history:hover{background:#35206d}
@@ -76,7 +77,7 @@ function stateCell(record){
   const td=cell('td','');
   const status=field(record,'status','Estado');
   const badge=cell('span',statusNames[status]||status);
-  badge.className='status-badge'+(status==='ANULADO'?' cancelled':status==='VIGENTE'?' active':'');
+  badge.className='status-badge'+(status==='ANULADO'?' cancelled':status==='VIGENTE'?' active':status==='VENCIDO'?' expired':'');
   td.replaceChildren(badge);
   return td;
 }
@@ -105,7 +106,7 @@ function historyRow(record){
   const statusCell=tr.children[1];
   if(status){
     const badge=cell('span',statusNames[status]||status);
-    badge.className='status-badge'+(status==='VIGENTE'?' active':'');
+    badge.className='status-badge'+(status==='VIGENTE'?' active':status==='VENCIDO'?' expired':status==='ANULADO'?' cancelled':'');
     statusCell.replaceChildren(badge);
   }
   return tr;
