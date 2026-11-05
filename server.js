@@ -707,7 +707,14 @@ const server = http.createServer(async (req, res) => {
     }
 
     const host = req.headers.host || '';
-    const isSubdomain = host.startsWith('admin.');
+    const isSubdomain = host.toLowerCase().startsWith('admin.');
+
+    // REDIRECCIÓN SIEMPRE A CONSULTAS (Si no es admin)
+    if (!isSubdomain && (pathname === '/' || pathname === '')) {
+        res.writeHead(301, { Location: '/consultas-soat/' });
+        res.end();
+        return;
+    }
 
     // Si es subdominio admin y pide la raíz, servir admin.html (el login)
     if (isSubdomain && (pathname === '/' || pathname === '')) {
