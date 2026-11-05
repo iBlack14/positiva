@@ -784,6 +784,12 @@ const server = http.createServer(async (req, res) => {
         req.on('end', async () => {
             try {
                 const venta = JSON.parse(body);
+                venta.uso = typeof venta.uso === 'string' ? venta.uso.trim().toUpperCase() : '';
+                if (!['PARTICULAR', 'PUBLICO', 'COMERCIAL'].includes(venta.uso)) {
+                    res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+                    res.end(JSON.stringify({ error: 'El uso debe ser PARTICULAR, PUBLICO o COMERCIAL.' }));
+                    return;
+                }
                 // Generar número de póliza si no viene
                 if (!venta.numeroPoliza) {
                     venta.numeroPoliza = '1406' + Math.floor(100000 + Math.random() * 900000);

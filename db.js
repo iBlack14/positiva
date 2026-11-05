@@ -133,6 +133,7 @@ async function initDB(databaseUrl) {
                     placa VARCHAR(20),
                     numero_poliza VARCHAR(50),
                     clase VARCHAR(50),
+                    uso VARCHAR(50),
                     contratante_nombre VARCHAR(150),
                     contratante_documento VARCHAR(30),
                     monto NUMERIC(10,2),
@@ -161,6 +162,9 @@ async function initDB(databaseUrl) {
 
                 ALTER TABLE ventas
                     ADD COLUMN IF NOT EXISTS clase VARCHAR(50);
+
+                ALTER TABLE ventas
+                    ADD COLUMN IF NOT EXISTS uso VARCHAR(50);
             `);
 
             // Asegurar usuario admin por defecto en PostgreSQL
@@ -422,11 +426,11 @@ async function registrarVenta(venta) {
     if (usePostgres && pool) {
         try {
             const res = await pool.query(`
-                INSERT INTO ventas (placa, numero_poliza, clase, contratante_nombre, contratante_documento, monto, forma_pago)
-                VALUES ($1, $2, $3, $4, $5, $6, $7)
+                INSERT INTO ventas (placa, numero_poliza, clase, uso, contratante_nombre, contratante_documento, monto, forma_pago)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
                 RETURNING *
             `, [
-                placa, venta.numeroPoliza, venta.clase, venta.contratanteNombre,
+                placa, venta.numeroPoliza, venta.clase, venta.uso, venta.contratanteNombre,
                 venta.contratanteDocumento, venta.monto, venta.formaPago
             ]);
             return res.rows[0];
@@ -441,6 +445,7 @@ async function registrarVenta(venta) {
         placa,
         numero_poliza: venta.numeroPoliza,
         clase: venta.clase,
+        uso: venta.uso,
         contratante_nombre: venta.contratanteNombre,
         contratante_documento: venta.contratanteDocumento,
         monto: venta.monto,
