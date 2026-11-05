@@ -364,6 +364,57 @@ async function guardarVehiculo(v) {
     return true;
 }
 
+// -------------------------------------------------------------
+// OPERACIONES DE VENTAS / EMISIÓN
+// -------------------------------------------------------------
+async function registrarVenta(venta) {
+    if (!venta.placa || !venta.numeroPoliza) return null;
+
+    if (usePostgres && pool) {
+        try {
+            const res = await pool.query(`
+                INSERT INTO ventas (placa, numero_poliza, contratante_nombre, contratante_documento, monto, forma_pago)
+                VALUES ($1, $2, $3, $4, $5, $6)
+                RETURNING *
+            `, [
+                venta.placa, venta.numeroPoliza, venta.contratanteNombre,
+                venta.contratanteDocumento, venta.monto, venta.formaPago
+            ]);
+            return res.rows[0];
+        } catch (e) {
+            console.error('[DB] Error registrando venta en Postgres:', e.message);
+        }
+    }
+
+    const db = cargarBaseLocal();
+    const nuevaVenta = {
+        id: db.ventas.length + 1,
+        placa: venta.placa,
+        numero_poliza: venta.numeroPoliza,
+        contratante_nombre: venta.contratanteNombre,
+        contratante_documento: venta.contratanteDocumento,
+        monto: venta.monto,
+        forma_pago: venta.formaPago,
+        emitido_en: new Date().toISOString()
+    };
+    db.ventas.push(nuevaVenta);
+    guardarBaseLocal(db);
+    return nuevaVenta;
+}
+
+async function listarVentas() {
+    if (usePostgres && pool) {
+        try {
+            const res = await pool.query('SELECT * FROM ventas ORDER BY emitido_en DESC');
+            return res.rows;
+        } catch (e) {
+            console.error('[DB] Error listando ventas en Postgres:', e.message);
+        }
+    }
+    const db = cargarBaseLocal();
+    return [...db.ventas].reverse();
+}
+
 module.exports = {
     initDB,
     autenticarUsuario,
@@ -372,6 +423,8 @@ module.exports = {
     destruirSesion,
     obtenerVehiculo,
     guardarVehiculo,
+    registrarVenta,
+    listarVentas,
     cargarBaseLocal
 };
 

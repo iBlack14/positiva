@@ -1846,12 +1846,99 @@
             document.getElementById('emisionResultFeedback').textContent = mensaje;
         }
 
-        function continuarConEmision(accion) {
+        async function continuarConEmision(accion) {
             cerrarRevisionEmision();
             if (accion === 'emitir') {
-                abrirResultadoEmision();
+                const placa = obtenerValorRevision('txtPlaca');
+                const contratante = obtenerValorRevision('txtNombreContratanteVenta');
+                const documento = obtenerValorRevision('txtNumDocVenta');
+                const montoStr = obtenerValorRevision('txtMontoPagar') || '0';
+                const monto = parseFloat(montoStr.replace(/[^0-9.]/g, '')) || 0;
+                const formaPago = obtenerValorRevision('txtFormaPago');
+
+                try {
+                    const response = await fetch('/api/emitir-soat', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            placa,
+                            contratanteNombre: contratante,
+                            contratanteDocumento: documento,
+                            monto,
+                            formaPago
+                        })
+                    });
+                    const res = await response.json();
+                    if (res.success) {
+                        const v = res.venta;
+                        const modalRes = document.getElementById('modalResultadoEmision');
+                        // Actualizar UI del modal con datos reales
+                        modalRes.querySelector('.emision-result-message').innerHTML = `<strong>${res.mensaje}</strong>`;
+                        modalRes.querySelector('.emision-result-content').innerHTML = `
+                            <p>Nro. Póliza: <strong>${v.numero_poliza}</strong></p>
+                            <p>Nro. Certificado: <strong>${v.numero_poliza}</strong></p>
+                            <p>Placa: <strong>${v.placa}</strong></p>
+                            <p>Fecha: <strong>${new Date(v.emitido_en).toLocaleString()}</strong></p>
+                            <label class="emision-result-email" for="correoEnvioCupon">
+                                <span>Enviar cupón a:</span>
+                                <input type="email" id="correoEnvioCupon" value="${obtenerValorRevision('txtCorreoContratanteVenta')}" />
+                            </label>
+                            <div style="margin-top: 15px; text-align: center;">
+                                <a href="/consulta-soat" target="_blank" class="btn-continue" style="text-decoration: none; display: inline-block; background: #3f2389;">
+                                    <i class="icon-search"></i> Verificar en APESEG
+                                </a>
+                            </div>
+                        `;
+                        document.getElementById('emisionResultFeedback').textContent = 'Póliza emitida y registrada exitosamente en el sistema oficial.';
+                        modalRes.classList.add('show');
+                        
+                        // Recargar lista si existe la función
+                        if (typeof cargarListaVentas === 'function') cargarListaVentas();
+                    } else {
+                        mostrarMensaje("Error al emitir: " + (res.error || "Desconocido"));
+                    }
+                } catch (e) {
+                    mostrarMensaje("Error de conexión al emitir.");
+                    console.error(e);
+                }
             } else if (accion === 'cotizar') {
                 mostrarMensaje("La cotización no está conectada a un servicio real.");
+            }
+        }
+
+        async function cargarListaVentas() {
+            try {
+                const response = await fetch('/api/ventas');
+                const ventas = await response.json();
+                const tbody = document.getElementById('tbodyListaVentas');
+                if (!tbody) return;
+                
+                if (!ventas || ventas.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #888; padding: 25px;">No se encontraron registros de ventas emitidas.</td></tr>';
+                    return;
+                }
+                
+                tbody.innerHTML = '';
+                ventas.forEach(v => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${v.numero_poliza}</td>
+                        <td>${v.placa}</td>
+                        <td>${v.contratante_nombre}</td>
+                        <td>SOAT ELECTRÓNICO</td>
+                        <td>${new Date(v.emitido_en).toLocaleDateString()}</td>
+                        <td>S/ ${parseFloat(v.monto).toFixed(2)}</td>
+                        <td><span class="label-success" style="background:#4caf50; color:white; padding:2px 6px; border-radius:3px; font-size:10px;">EMITIDO</span></td>
+                        <td>
+                            <button class="btn-icon-search-orange" style="padding:2px 5px;" onclick="window.open('/consulta-soat', '_blank')" title="Ver en APESEG">
+                                <i class="icon-search"></i>
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (e) {
+                console.error("Error cargando ventas:", e);
             }
         }
 

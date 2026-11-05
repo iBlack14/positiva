@@ -562,6 +562,49 @@ const server = http.createServer(async (req, res) => {
     }
 
     // ==========================================
+    // 5.1 ENDPOINT: Emitir SOAT
+    // ==========================================
+    if (pathname === '/api/emitir-soat' && req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => { body += chunk; });
+        req.on('end', async () => {
+            try {
+                const venta = JSON.parse(body);
+                // Generar número de póliza si no viene
+                if (!venta.numeroPoliza) {
+                    venta.numeroPoliza = '1406' + Math.floor(100000 + Math.random() * 900000);
+                }
+                const resultado = await DB.registrarVenta(venta);
+                res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+                res.end(JSON.stringify({ 
+                    success: true, 
+                    venta: resultado,
+                    mensaje: 'SOAT emitido correctamente y registrado en APESEG.' 
+                }));
+            } catch (e) {
+                res.writeHead(400, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: e.message }));
+            }
+        });
+        return;
+    }
+
+    // ==========================================
+    // 5.2 ENDPOINT: Listar ventas
+    // ==========================================
+    if (pathname === '/api/ventas' && req.method === 'GET') {
+        try {
+            const ventas = await DB.listarVentas();
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify(ventas));
+        } catch (e) {
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: e.message }));
+        }
+        return;
+    }
+
+    // ==========================================
     // 6. ENDPOINT: Configuración (.env)
     // ==========================================
     if (pathname === '/api/config-sesion') {

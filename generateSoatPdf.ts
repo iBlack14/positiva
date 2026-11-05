@@ -45,62 +45,17 @@ interface InsurerMeta {
 }
 
 const INSURERS: Record<string, InsurerMeta> = {
-  falabella: {
-    // Esta variante no tiene el gran margen transparente del logo genérico,
-    // por lo que conserva una presencia visual correcta dentro del certificado.
-    logoPath: '/assets/logos/seguros-falabella-header.png',
-    name: 'SEGUROS FALABELLA CORREDORES DE SEGUROS',
-    emergencyPhone: '01 615 4300 LIMA Y PROVINCIAS',
-    width: 22.7,
-    height: 9.2
-  },
   'la-positiva': {
     logoPath: '/assets/logos/la-positiva.png',
     name: 'LA POSITIVA SEGUROS Y REASEGUROS',
     emergencyPhone: '211 0211 LIMA Y/O PROVINCIAS',
     width: 27.0,
     height: 8.5
-  },
-  pacifico: {
-    logoPath: '/assets/logos/pacifico.png',
-    name: 'PACÍFICO COMPAÑÍA DE SEGUROS',
-    emergencyPhone: '(01) 415 1515 LIMA Y PROVINCIAS',
-    width: 26.0,
-    height: 8.0
-  },
-  mapfre: {
-    logoPath: '/assets/logos/mapfre.png',
-    name: 'MAPFRE PERÚ COMPAÑÍA DE SEGUROS',
-    emergencyPhone: '213 3333 LIMA / 0801 1 1133',
-    width: 27.0,
-    height: 7.2
-  },
-  interseguro: {
-    logoPath: '/assets/logos/interseguro.png',
-    name: 'INTERSEGURO COMPAÑÍA DE SEGUROS',
-    emergencyPhone: '500 0000 LIMA / 0801 0 0160',
-    width: 26.5,
-    height: 7.8
-  },
-  protecta: {
-    logoPath: '/assets/logos/protecta.png',
-    name: 'PROTECTA SECURITY COMPAÑÍA DE SEGUROS',
-    emergencyPhone: '391 3000 LIMA / 0801 1 1230',
-    width: 27.0,
-    height: 8.2
   }
 };
 
 function normalizeInsurerKey(raw?: string): string {
-  if (!raw) return 'la-positiva';
-  const clean = raw.toLowerCase().trim();
-  if (clean.includes('positiva')) return 'la-positiva';
-  if (clean.includes('pacifico') || clean.includes('pacífico')) return 'pacifico';
-  if (clean.includes('mapfre')) return 'mapfre';
-  if (clean.includes('interseguro')) return 'interseguro';
-  if (clean.includes('protecta')) return 'protecta';
-  if (clean.includes('falabella')) return 'falabella';
-  return clean.replace(/[^a-z0-9-]/g, '-');
+  return 'la-positiva';
 }
 
 function loadImageDataUrl(url: string): Promise<string> {
@@ -208,7 +163,7 @@ export async function generateAndDownloadSoatPdf(quote: QuoteForPdf) {
   heading('Certificado Electrónico', margin, 11.7, 7.5);
   heading('Decreto Supremo 015 - 2016 MTC', margin, 15.1, 6.8);
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(32);
+  doc.setFontSize(24);
   setColor(PURPLE);
   doc.text('SOAT', pageWidth - margin, 15.5, { align: 'right' });
   divider(18.8);

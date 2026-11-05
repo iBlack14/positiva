@@ -163,7 +163,7 @@ async function generateAndDownloadSoatPdf(quote) {
     heading('Certificado Electrónico', margin, 11.7, 7.5);
     heading('Decreto Supremo 015 - 2016 MTC', margin, 15.1, 6.8);
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(32);
+    doc.setFontSize(24);
     setColor(PURPLE);
     doc.text('SOAT', pageWidth - margin, 15.5, { align: 'right' });
     divider(18.8);
