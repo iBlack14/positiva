@@ -381,8 +381,17 @@ const server = http.createServer(async (req, res) => {
 
             try {
                 const placa = normalizarPlaca(data.plate || '');
-                const ventas = placa ? await DB.buscarVentasPorPlaca(placa) : [];
-                if (!ventas.length) {
+                const [ventas, registrosApeseg] = placa
+                    ? await Promise.all([
+                        DB.buscarVentasPorPlaca(placa),
+                        DB.listarRegistrosApeseg()
+                    ])
+                    : [[], []];
+                const cleanPlate = placa.replace(/[^A-Z0-9]/g, '');
+                const registrosDePlaca = registrosApeseg.filter(registro =>
+                    String(registro.placa || '').replace(/[^A-Z0-9]/gi, '').toUpperCase() === cleanPlate
+                );
+                if (!ventas.length && !registrosDePlaca.length) {
                     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
                     res.end(JSON.stringify({ data: { found: false, plate: placa } }));
                     return;
@@ -394,50 +403,72 @@ const server = http.createServer(async (req, res) => {
                     d.setFullYear(d.getFullYear() + 1);
                     return d;
                 };
-                const soloFecha = d => new Intl.DateTimeFormat('en-CA', {
-                    timeZone: 'America/Lima', year: 'numeric', month: '2-digit', day: '2-digit'
-                }).format(new Date(d));
-                const estadoPorVigencia = (inicio, fin) => {
+                const soloFecha = value => {
+                    if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+                    const date = new Date(value);
+                    if (Number.isNaN(date.getTime())) return '';
+                    return new Intl.DateTimeFormat('en-CA', {
+                        timeZone: 'America/Lima', year: 'numeric', month: '2-digit', day: '2-digit'
+                    }).format(date);
+                };
+                const estadoPorVigencia = (inicio, fin, estado) => {
+                    if (String(estado || '').toUpperCase() === 'ANULADO') return 'ANULADO';
                     const hoy = soloFecha(new Date());
                     if (inicio > hoy) return 'AUN_NO_VIGENTE';
-                    if (fin < hoy) return 'VENCIDO';
+                    if (fin <= hoy) return 'VENCIDO';
                     return 'VIGENTE';
                 };
-                const aRegistro = v => ({
-                    insurer: 'LA POSITIVA SEGUROS Y REASEGUROS',
-                    policyNumber: v.numero_poliza,
-                    plate: normalizarPlaca(v.placa || placa),
-                    startsAt: soloFecha(v.emitido_en),
-                    expiresAt: soloFecha(finDe(v.emitido_en)),
-                    status: estadoPorVigencia(
-                        soloFecha(v.emitido_en),
-                        soloFecha(finDe(v.emitido_en))
-                    )
-                });
-
-                const v = ventas[0];
-                const inicia = soloFecha(v.emitido_en);
-                const vence = soloFecha(finDe(v.emitido_en));
+                const historial = [
+                    ...ventas.map(venta => {
+                        const inicio = soloFecha(venta.emitido_en);
+                        const fin = soloFecha(finDe(venta.emitido_en));
+                        return {
+                            insurer: 'LA POSITIVA SEGUROS Y REASEGUROS',
+                            policyNumber: venta.numero_poliza,
+                            plate: normalizarPlaca(venta.placa || placa),
+                            startsAt: inicio,
+                            expiresAt: fin,
+                            status: estadoPorVigencia(inicio, fin),
+                            vehicleUse: vehiculo.uso || 'PARTICULAR',
+                            vehicleClass: vehiculo.clase || '',
+                            certificateType: 'DIGITAL',
+                            createdAt: new Date(venta.emitido_en).toISOString(),
+                            cancelledAt: null,
+                            policeCheckAt: null,
+                            seats: vehiculo.asientos || '',
+                            vehicleModel: vehiculo.modeloEsp || vehiculo.modelo || '',
+                            make: vehiculo.marca || ''
+                        };
+                    }),
+                    ...registrosDePlaca.map(registro => {
+                        const inicio = soloFecha(registro.fecha_inicio);
+                        const fin = soloFecha(registro.fecha_fin);
+                        return {
+                            insurer: registro.compania,
+                            policyNumber: registro.numero_poliza,
+                            plate: normalizarPlaca(registro.placa || placa),
+                            startsAt: inicio,
+                            expiresAt: fin,
+                            status: estadoPorVigencia(inicio, fin, registro.estado),
+                            vehicleUse: vehiculo.uso || 'PARTICULAR',
+                            vehicleClass: vehiculo.clase || '',
+                            certificateType: 'APESEG',
+                            createdAt: registro.creado_en ? new Date(registro.creado_en).toISOString() : null,
+                            cancelledAt: null,
+                            policeCheckAt: null,
+                            seats: vehiculo.asientos || '',
+                            vehicleModel: vehiculo.modeloEsp || vehiculo.modelo || '',
+                            make: vehiculo.marca || ''
+                        };
+                    })
+                ].sort((a, b) => b.startsAt.localeCompare(a.startsAt));
+                const actual = historial[0];
                 res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
                 res.end(JSON.stringify({
                     data: {
                         found: true,
-                        plate: normalizarPlaca(v.placa || placa),
-                        insurer: 'LA POSITIVA SEGUROS Y REASEGUROS',
-                        status: estadoPorVigencia(inicia, vence),
-                        startsAt: inicia,
-                        expiresAt: vence,
-                        policyNumber: v.numero_poliza,
-                        vehicleUse: vehiculo.uso || 'PARTICULAR',
-                        vehicleClass: vehiculo.clase || '',
-                        certificateType: 'DIGITAL',
-                        createdAt: new Date(v.emitido_en).toISOString(),
-                        cancelledAt: null,
-                        policeCheckAt: null,
-                        seats: vehiculo.asientos || '',
-                        vehicleModel: vehiculo.modeloEsp || vehiculo.modelo || '',
-                        make: vehiculo.marca || '',
-                        history: ventas.map(aRegistro)
+                        ...actual,
+                        history: historial
                     }
                 }));
             } catch (e) {
