@@ -2789,7 +2789,6 @@
                 document.getElementById('txtDistritoContratanteVenta').value = datos.distrito;
                 datosContratanteManual = true;
                 actualizarDatosComprobanteVenta();
-                mostrarMensaje('Titular del DNI: ' + datos.nombre);
             } catch (error) {
                 mostrarMensaje(error.message || 'No se pudo consultar el DNI.');
             }
