@@ -66,7 +66,8 @@ async function initDB(databaseUrl) {
             console.log('[DB] Intentando conectar a PostgreSQL configurado en .env...');
             pool = new pg.Pool({
                 connectionString: databaseUrl,
-                connectionTimeoutMillis: 3000
+                connectionTimeoutMillis: 3000,
+                options: '-c timezone=America/Lima'
             });
 
             // Verificar conexión
@@ -415,6 +416,30 @@ async function listarVentas() {
     return [...db.ventas].reverse();
 }
 
+async function buscarVentasPorPlaca(placa) {
+    const clean = String(placa || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+    if (!clean) return [];
+
+    if (usePostgres && pool) {
+        try {
+            const res = await pool.query(
+                `SELECT * FROM ventas
+                 WHERE REPLACE(UPPER(placa), '-', '') = $1
+                 ORDER BY emitido_en DESC`,
+                [clean]
+            );
+            return res.rows;
+        } catch (e) {
+            console.error('[DB] Error buscando ventas en Postgres:', e.message);
+        }
+    }
+
+    const db = cargarBaseLocal();
+    return db.ventas
+        .filter(v => String(v.placa || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase() === clean)
+        .sort((a, b) => new Date(b.emitido_en) - new Date(a.emitido_en));
+}
+
 module.exports = {
     initDB,
     autenticarUsuario,
@@ -425,6 +450,7 @@ module.exports = {
     guardarVehiculo,
     registrarVenta,
     listarVentas,
+    buscarVentasPorPlaca,
     cargarBaseLocal
 };
 

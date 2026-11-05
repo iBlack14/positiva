@@ -1554,12 +1554,11 @@
                                 <th>Vigencia</th>
                                 <th>Monto</th>
                                 <th>Estado</th>
-                                <th>Acción</th>
                             </tr>
                         </thead>
                         <tbody id="tbodyListaVentas">
                             <tr>
-                                <td colspan="8" style="text-align: center; color: #888; padding: 25px;">No se encontraron registros de ventas emitidas.</td>
+                                <td colspan="7" style="text-align: center; color: #888; padding: 25px;">No se encontraron registros de ventas emitidas.</td>
                             </tr>
                         </tbody>
                     </table>
@@ -1883,11 +1882,6 @@
                                 <span>Enviar cupón a:</span>
                                 <input type="email" id="correoEnvioCupon" value="${obtenerValorRevision('txtCorreoContratanteVenta')}" />
                             </label>
-                            <div style="margin-top: 15px; text-align: center;">
-                                <a href="/consulta-soat" target="_blank" class="btn-continue" style="text-decoration: none; display: inline-block; background: #3f2389;">
-                                    <i class="icon-search"></i> Verificar en APESEG
-                                </a>
-                            </div>
                         `;
                         document.getElementById('emisionResultFeedback').textContent = 'Póliza emitida y registrada exitosamente en el sistema oficial.';
                         modalRes.classList.add('show');
@@ -1914,7 +1908,7 @@
                 if (!tbody) return;
                 
                 if (!ventas || ventas.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #888; padding: 25px;">No se encontraron registros de ventas emitidas.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #888; padding: 25px;">No se encontraron registros de ventas emitidas.</td></tr>';
                     return;
                 }
                 
@@ -1929,11 +1923,6 @@
                         <td>${new Date(v.emitido_en).toLocaleDateString()}</td>
                         <td>S/ ${parseFloat(v.monto).toFixed(2)}</td>
                         <td><span class="label-success" style="background:#4caf50; color:white; padding:2px 6px; border-radius:3px; font-size:10px;">EMITIDO</span></td>
-                        <td>
-                            <button class="btn-icon-search-orange" style="padding:2px 5px;" onclick="window.open('/consulta-soat', '_blank')" title="Ver en APESEG">
-                                <i class="icon-search"></i>
-                            </button>
-                        </td>
                     `;
                     tbody.appendChild(tr);
                 });

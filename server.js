@@ -357,7 +357,7 @@ const server = http.createServer(async (req, res) => {
             }
             body += chunk;
         });
-        req.on('end', () => {
+        req.on('end', async () => {
             if (bodyTooLarge) {
                 res.writeHead(413, { 'Content-Type': 'application/json; charset=utf-8' });
                 res.end(JSON.stringify({ message: 'Solicitud demasiado grande.' }));
@@ -387,8 +387,61 @@ const server = http.createServer(async (req, res) => {
                 return;
             }
 
-            res.writeHead(503, { 'Content-Type': 'application/json; charset=utf-8' });
-            res.end(JSON.stringify({ message: 'La consulta de certificados aún no está conectada a un registro.' }));
+            try {
+                const placa = normalizarPlaca(data.plate || '');
+                const ventas = placa ? await DB.buscarVentasPorPlaca(placa) : [];
+                if (!ventas.length) {
+                    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+                    res.end(JSON.stringify({ data: { found: false, plate: placa } }));
+                    return;
+                }
+
+                const vehiculo = (await DB.obtenerVehiculo(placa)) || {};
+                const finDe = fecha => {
+                    const d = new Date(fecha);
+                    d.setFullYear(d.getFullYear() + 1);
+                    return d;
+                };
+                const soloFecha = d => new Intl.DateTimeFormat('en-CA', {
+                    timeZone: 'America/Lima', year: 'numeric', month: '2-digit', day: '2-digit'
+                }).format(new Date(d));
+                const aRegistro = v => ({
+                    insurer: 'LA POSITIVA SEGUROS Y REASEGUROS',
+                    policyNumber: v.numero_poliza,
+                    plate: v.placa || placa,
+                    status: 'VIGENTE',
+                    startsAt: soloFecha(v.emitido_en),
+                    expiresAt: soloFecha(finDe(v.emitido_en))
+                });
+
+                const v = ventas[0];
+                res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+                res.end(JSON.stringify({
+                    data: {
+                        found: true,
+                        plate: v.placa || placa,
+                        insurer: 'LA POSITIVA SEGUROS Y REASEGUROS',
+                        status: 'VIGENTE',
+                        startsAt: soloFecha(v.emitido_en),
+                        expiresAt: soloFecha(finDe(v.emitido_en)),
+                        policyNumber: v.numero_poliza,
+                        vehicleUse: vehiculo.uso || 'PARTICULAR',
+                        vehicleClass: vehiculo.clase || '',
+                        certificateType: 'DIGITAL',
+                        createdAt: new Date(v.emitido_en).toISOString(),
+                        cancelledAt: null,
+                        policeCheckAt: null,
+                        seats: vehiculo.asientos || '',
+                        vehicleModel: vehiculo.modeloEsp || vehiculo.modelo || '',
+                        make: vehiculo.marca || '',
+                        history: ventas.map(aRegistro)
+                    }
+                }));
+            } catch (e) {
+                console.error('[CONSULTA SOAT] Error:', e.message);
+                res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+                res.end(JSON.stringify({ message: 'No se pudo completar la consulta.' }));
+            }
         });
         return;
     }
