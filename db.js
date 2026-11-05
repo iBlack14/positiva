@@ -470,6 +470,29 @@ async function listarVentas() {
     return [...db.ventas].reverse();
 }
 
+async function eliminarVenta(id) {
+    if (!Number.isSafeInteger(id) || id <= 0) return false;
+
+    if (usePostgres && pool) {
+        try {
+            const res = await pool.query('DELETE FROM ventas WHERE id = $1 RETURNING id', [id]);
+            return res.rowCount > 0;
+        } catch (e) {
+            console.error('[DB] Error eliminando venta en Postgres:', e.message);
+            throw e;
+        }
+    }
+
+    const db = cargarBaseLocal();
+    const ventas = Array.isArray(db.ventas) ? db.ventas : [];
+    const ventasActualizadas = ventas.filter(venta => Number(venta.id) !== id);
+    if (ventasActualizadas.length === ventas.length) return false;
+
+    db.ventas = ventasActualizadas;
+    if (!guardarBaseLocal(db)) throw new Error('No se pudo eliminar la venta localmente.');
+    return true;
+}
+
 async function buscarVentasPorPlaca(placa) {
     const clean = normalizarPlaca(placa).replace(/[^A-Z0-9]/g, '');
     if (!clean) return [];
@@ -588,6 +611,7 @@ module.exports = {
     guardarVehiculo,
     registrarVenta,
     listarVentas,
+    eliminarVenta,
     buscarVentasPorPlaca,
     registrarRegistroApeseg,
     listarRegistrosApeseg,

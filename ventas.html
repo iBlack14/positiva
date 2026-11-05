@@ -2223,8 +2223,26 @@
             if (!venta.registro_apeseg_sin_venta) {
                 const emitted = document.createElement('div');
                 emitted.className = 'apeseg-tooltip-record';
-                emitted.textContent = `SOAT Digital · Póliza ${venta.numero_poliza || '—'} · Emitido ${formatearFechaApeseg(venta.emitido_en)}`;
-                tooltip.appendChild(emitted);
+                const emittedText = document.createElement('span');
+                emittedText.textContent = `SOAT Digital · Póliza ${venta.numero_poliza || '—'} · Emitido ${formatearFechaApeseg(venta.emitido_en)}`;
+                emitted.appendChild(emittedText);
+
+                if (Number.isSafeInteger(Number(venta.id)) && Number(venta.id) > 0) {
+                    const emittedHeader = document.createElement('div');
+                    emittedHeader.className = 'apeseg-tooltip-record-header';
+                    emittedHeader.appendChild(emitted);
+
+                    const deleteButton = document.createElement('button');
+                    deleteButton.type = 'button';
+                    deleteButton.className = 'apeseg-tooltip-delete';
+                    deleteButton.textContent = 'Eliminar';
+                    deleteButton.setAttribute('aria-label', `Eliminar póliza ${venta.numero_poliza || ''} de ${venta.placa || 'la placa'} del historial`);
+                    deleteButton.addEventListener('click', () => eliminarVenta(venta, deleteButton));
+                    emittedHeader.appendChild(deleteButton);
+                    tooltip.appendChild(emittedHeader);
+                } else {
+                    tooltip.appendChild(emitted);
+                }
             }
 
             if (registros.length) {
@@ -2342,6 +2360,26 @@
             } catch (e) {
                 button.disabled = false;
                 mostrarMensaje(e.message || 'No se pudo eliminar el registro.');
+            }
+        }
+
+        async function eliminarVenta(venta, button) {
+            const confirmacion = `¿Eliminar del historial local la póliza ${venta.numero_poliza || '—'} de la placa ${venta.placa || '—'}? Esta acción no anula la póliza emitida en el sistema oficial y no se puede deshacer.`;
+            if (!window.confirm(confirmacion)) return;
+
+            button.disabled = true;
+            try {
+                const response = await fetch(`/api/ventas?id=${encodeURIComponent(venta.id)}`, {
+                    method: 'DELETE'
+                });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || 'No se pudo eliminar la venta.');
+
+                await cargarListaVentas();
+                mostrarMensaje('Póliza eliminada del historial local. La póliza emitida no fue anulada.');
+            } catch (e) {
+                mostrarMensaje(e.message || 'No se pudo eliminar la venta.');
+                button.disabled = false;
             }
         }
 

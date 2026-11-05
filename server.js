@@ -946,11 +946,36 @@ const server = http.createServer(async (req, res) => {
     // ==========================================
     // 5.2 ENDPOINT: Listar ventas
     // ==========================================
-    if (pathname === '/api/ventas' && req.method === 'GET') {
+    if (pathname === '/api/ventas' && (req.method === 'GET' || req.method === 'DELETE')) {
         const sesionValida = await DB.validarSesion(sessionToken);
         if (!sesionValida) {
             res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
             res.end(JSON.stringify({ error: 'Debe iniciar sesión para consultar las ventas.' }));
+            return;
+        }
+
+        if (req.method === 'DELETE') {
+            const idValue = String(parsedUrl.query.id || '');
+            if (!/^[1-9]\d*$/.test(idValue) || !Number.isSafeInteger(Number(idValue))) {
+                res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+                res.end(JSON.stringify({ error: 'El identificador de la venta no es válido.' }));
+                return;
+            }
+
+            try {
+                const eliminado = await DB.eliminarVenta(Number(idValue));
+                if (!eliminado) {
+                    res.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8' });
+                    res.end(JSON.stringify({ error: 'No se encontró la venta.' }));
+                    return;
+                }
+                res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+                res.end(JSON.stringify({ success: true }));
+            } catch (e) {
+                console.error('[VENTAS] Error eliminando venta:', e.message);
+                res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+                res.end(JSON.stringify({ error: 'No se pudo eliminar la venta.' }));
+            }
             return;
         }
 
@@ -993,6 +1018,12 @@ const server = http.createServer(async (req, res) => {
             res.writeHead(500, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ error: 'No se pudieron cargar las ventas.' }));
         }
+        return;
+    }
+
+    if (pathname === '/api/ventas') {
+        res.writeHead(405, { 'Content-Type': 'application/json; charset=utf-8', Allow: 'GET, DELETE' });
+        res.end(JSON.stringify({ error: 'Método no permitido.' }));
         return;
     }
 
