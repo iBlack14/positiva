@@ -19,6 +19,7 @@ function leerConfig() {
         tokenYupay: process.env.YUPAY_TOKEN || '',
         cookieLaPositiva: process.env.LAPOSITIVA_COOKIE || '',
         databaseUrl: process.env.DATABASE_URL || '',
+        apiKey: process.env.API_KEY || '',
         timeoutMs: 10000
     };
 
@@ -39,6 +40,7 @@ function leerConfig() {
                 if (key === 'YUPAY_TOKEN' || key === 'TOKEN_YUPAY') cfg.tokenYupay = val;
                 if (key === 'LAPOSITIVA_COOKIE' || key === 'COOKIE_LAPOSITIVA') cfg.cookieLaPositiva = val;
                 if (key === 'DATABASE_URL' || key === 'POSTGRES_URL') cfg.databaseUrl = val;
+                if (key === 'API_KEY') cfg.apiKey = val;
                 if (key === 'TIMEOUT_MS') cfg.timeoutMs = parseInt(val, 10) || 10000;
             }
         }
@@ -179,6 +181,53 @@ function consultarYupay(placa, token, timeoutMs) {
         });
 
         req.end();
+    });
+}
+
+function consultarReniec(dni, apiKey, timeoutMs) {
+    return new Promise((resolve, reject) => {
+        const body = JSON.stringify({ dni });
+        const req = https.request({
+            hostname: 'bot-sunarpapi.stkkft.easypanel.host',
+            port: 443,
+            path: '/reniec/consulta',
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Content-Length': Buffer.byteLength(body),
+                'X-API-Key': apiKey,
+                'Accept': 'application/json'
+            },
+            timeout: timeoutMs || 10000
+        }, response => {
+            let responseBody = '';
+            let responseTooLarge = false;
+            response.on('data', chunk => {
+                responseBody += chunk;
+                if (Buffer.byteLength(responseBody, 'utf8') > 1024 * 1024) {
+                    responseTooLarge = true;
+                    response.destroy();
+                }
+            });
+            response.on('end', () => {
+                if (responseTooLarge) {
+                    reject(new Error('RESPONSE_TOO_LARGE'));
+                    return;
+                }
+                try {
+                    resolve({ statusCode: response.statusCode, data: JSON.parse(responseBody) });
+                } catch {
+                    reject(new Error('INVALID_RENIEC_RESPONSE'));
+                }
+            });
+            response.on('error', error => reject(error));
+        });
+
+        req.on('timeout', () => {
+            req.destroy(new Error('TIMEOUT_RENIEC'));
+        });
+        req.on('error', error => reject(error));
+        req.end(body);
     });
 }
 
@@ -336,6 +385,84 @@ const server = http.createServer(async (req, res) => {
             'Set-Cookie': `soat_captcha=${id}; Path=/; HttpOnly; SameSite=Lax; Max-Age=300`
         });
         res.end(image);
+        return;
+    }
+
+    if (pathname === '/api/reniec/consulta' && req.method === 'POST') {
+        const sesionValida = await DB.validarSesion(sessionToken);
+        if (!sesionValida) {
+            res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({ error: 'Debe iniciar sesión para consultar un DNI.' }));
+            return;
+        }
+
+        let body = '';
+        try {
+            for await (const chunk of req) {
+                body += chunk;
+                if (Buffer.byteLength(body, 'utf8') > 1024) {
+                    res.writeHead(413, { 'Content-Type': 'application/json; charset=utf-8' });
+                    res.end(JSON.stringify({ error: 'Solicitud demasiado grande.' }));
+                    return;
+                }
+            }
+        } catch (error) {
+            console.error('[RENIEC] Error leyendo solicitud:', error.message);
+            res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({ error: 'No se pudo leer la solicitud.' }));
+            return;
+        }
+
+        let data;
+        try {
+            data = JSON.parse(body);
+        } catch {
+            res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({ error: 'Solicitud inválida.' }));
+            return;
+        }
+
+        const dni = typeof data.dni === 'string' ? data.dni.trim() : '';
+        if (!/^\d{8}$/.test(dni)) {
+            res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({ error: 'El DNI debe tener exactamente 8 dígitos.' }));
+            return;
+        }
+
+        const config = leerConfig();
+        if (!config.apiKey) {
+            res.writeHead(503, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({ error: 'No está configurada la clave de consulta RENIEC (API_KEY).' }));
+            return;
+        }
+
+        try {
+            const resultado = await consultarReniec(dni, config.apiKey, config.timeoutMs);
+            if (resultado.statusCode < 200 || resultado.statusCode >= 300) {
+                const message = resultado.data && (resultado.data.message || resultado.data.error);
+                const status = resultado.statusCode === 404 ? 404 : 502;
+                res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' });
+                res.end(JSON.stringify({
+                    error: typeof message === 'string'
+                        ? message
+                        : (status === 404 ? 'No se encontró información para ese DNI.' : 'La consulta RENIEC no pudo completarse.')
+                }));
+                return;
+            }
+
+            res.writeHead(200, {
+                'Content-Type': 'application/json; charset=utf-8',
+                'Cache-Control': 'no-store'
+            });
+            res.end(JSON.stringify(resultado.data));
+        } catch (error) {
+            const timedOut = error.message === 'TIMEOUT_RENIEC';
+            console.error('[RENIEC] Error consultando DNI:', error.message);
+            res.writeHead(timedOut ? 504 : 502, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({
+                error: timedOut ? 'La consulta RENIEC tardó demasiado. Inténtalo nuevamente.' : 'No se pudo consultar RENIEC.'
+            }));
+        }
         return;
     }
 

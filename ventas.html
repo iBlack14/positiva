@@ -1611,6 +1611,11 @@
                         </button>
                     </div>
 
+                    <div class="form-row-cotizacion" style="margin-bottom: 12px;">
+                        <label class="field-label" style="width: 120px;">Nombres y apellidos</label>
+                        <input type="text" id="txtNombreContratanteCot" class="ctrl-input" style="width: 320px;" maxlength="150" />
+                    </div>
+
                     <!-- Fila 3: Pregunta Comprobante -->
                     <div class="form-row-cotizacion" style="padding-top: 5px;">
                         <span style="font-size: 11px; margin-right: 15px; color: #606363;">
@@ -2590,17 +2595,103 @@
             document.getElementById('txtPlacaCot').focus();
         }
 
-        function buscarDocumentoCot() {
+        function obtenerCampoReniec(payload, nombresCampo) {
+            var nombresNormalizados = nombresCampo.map(function (nombre) {
+                return nombre.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+            });
+            var pendientes = [payload];
+            var visitados = new Set();
+
+            while (pendientes.length) {
+                var actual = pendientes.shift();
+                if (!actual || typeof actual !== 'object' || visitados.has(actual)) continue;
+                visitados.add(actual);
+
+                var entradas = Object.entries(actual);
+                for (var i = 0; i < entradas.length; i++) {
+                    var clave = entradas[i][0].normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                    var valor = entradas[i][1];
+                    if (nombresNormalizados.includes(clave) && (typeof valor === 'string' || typeof valor === 'number')) {
+                        var texto = String(valor).trim();
+                        if (texto) return texto;
+                    }
+                }
+                entradas.forEach(function (entrada) {
+                    if (entrada[1] && typeof entrada[1] === 'object') pendientes.push(entrada[1]);
+                });
+            }
+            return '';
+        }
+
+        function obtenerDatosReniec(payload) {
+            var nombreCompleto = obtenerCampoReniec(payload, [
+                'nombre_completo', 'nombres_completos', 'full_name', 'fullname'
+            ]);
+            var partes = [
+                obtenerCampoReniec(payload, ['nombres', 'given_names', 'first_names']),
+                obtenerCampoReniec(payload, ['apellido_paterno', 'apellidoPaterno', 'paterno', 'first_surname']),
+                obtenerCampoReniec(payload, ['apellido_materno', 'apellidoMaterno', 'materno', 'second_surname'])
+            ].filter(Boolean);
+            return {
+                nombre: nombreCompleto || partes.join(' ') || obtenerCampoReniec(payload, ['nombre', 'name']),
+                direccion: obtenerCampoReniec(payload, ['direccion', 'address']),
+                departamento: obtenerCampoReniec(payload, ['departamento', 'department']),
+                provincia: obtenerCampoReniec(payload, ['provincia', 'province']),
+                distrito: obtenerCampoReniec(payload, ['distrito', 'district'])
+            };
+        }
+
+        async function consultarDniReniec(dni) {
+            var response = await fetch('/api/reniec/consulta', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ dni: dni }),
+                cache: 'no-store'
+            });
+            var payload;
+            try {
+                payload = await response.json();
+            } catch {
+                throw new Error('El servicio RENIEC devolvió una respuesta inválida.');
+            }
+
+            if (!payload || typeof payload !== 'object') {
+                throw new Error('El servicio RENIEC devolvió una respuesta inválida.');
+            }
+            if (!response.ok || payload.success === false || payload.error) {
+                var error = payload.error;
+                var mensaje = payload.message || (typeof error === 'string' ? error : error && error.message);
+                throw new Error(mensaje || 'No se pudo consultar el DNI.');
+            }
+
+            var datos = obtenerDatosReniec(payload);
+            if (!datos.nombre) throw new Error('La consulta respondió, pero no se encontró el nombre del titular.');
+            return datos;
+        }
+
+        async function buscarDocumentoCot() {
             var doc = document.getElementById('txtNumDocCot').value.trim();
-            if (!doc) {
-                mostrarMensaje("Debe ingresar el número de documento.");
+            if (document.getElementById('cmbTipoDocCot').value !== 'DNI') {
+                mostrarMensaje('La consulta RENIEC solo está disponible para DNI.');
                 return;
             }
-            mostrarMensaje("Consultando documento: " + doc);
+            if (!/^\d{8}$/.test(doc)) {
+                mostrarMensaje('Ingrese un DNI válido de exactamente 8 dígitos.');
+                document.getElementById('txtNumDocCot').focus();
+                return;
+            }
+            try {
+                var datos = await consultarDniReniec(doc);
+                document.getElementById('txtNombreContratanteCot').value = datos.nombre;
+                mostrarMensaje('Titular del DNI: ' + datos.nombre);
+            } catch (error) {
+                mostrarMensaje(error.message || 'No se pudo consultar el DNI.');
+            }
         }
 
         function limpiarContratanteCot() {
             document.getElementById('txtNumDocCot').value = '';
+            document.getElementById('txtNombreContratanteCot').value = '';
             document.getElementById('txtNumDocCot').focus();
         }
 
@@ -2616,16 +2707,30 @@
             datos.style.display = comprobante && comprobante.value === 'NO' || datosContratanteManual ? 'grid' : 'none';
         }
 
-        function buscarDocumentoVenta() {
+        async function buscarDocumentoVenta() {
             var doc = document.getElementById('txtNumDocVenta').value.trim();
-            if (!doc) {
-                mostrarMensaje("Debe ingresar el número de documento del contratante.");
+            if (document.getElementById('cmbTipoDocVenta').value !== 'DNI') {
+                mostrarMensaje('La consulta RENIEC solo está disponible para DNI.');
+                return;
+            }
+            if (!/^\d{8}$/.test(doc)) {
+                mostrarMensaje('Ingrese un DNI válido de exactamente 8 dígitos.');
                 document.getElementById('txtNumDocVenta').focus();
                 return;
             }
-            datosContratanteManual = true;
-            actualizarDatosComprobanteVenta();
-            mostrarMensaje("La búsqueda de documentos no está conectada. Puede completar los datos del contratante manualmente.");
+            try {
+                var datos = await consultarDniReniec(doc);
+                document.getElementById('txtNombreContratanteVenta').value = datos.nombre;
+                document.getElementById('txtDireccionContratanteVenta').value = datos.direccion;
+                document.getElementById('txtDepartamentoContratanteVenta').value = datos.departamento;
+                document.getElementById('txtProvinciaContratanteVenta').value = datos.provincia;
+                document.getElementById('txtDistritoContratanteVenta').value = datos.distrito;
+                datosContratanteManual = true;
+                actualizarDatosComprobanteVenta();
+                mostrarMensaje('Titular del DNI: ' + datos.nombre);
+            } catch (error) {
+                mostrarMensaje(error.message || 'No se pudo consultar el DNI.');
+            }
         }
 
         function limpiarContratanteVenta() {
@@ -2663,6 +2768,7 @@
             document.getElementById('txtCotizacion').value = '';
             document.getElementById('txtPlacaCot').value = '';
             document.getElementById('txtNumDocCot').value = '';
+            document.getElementById('txtNombreContratanteCot').value = '';
             // Cotización limpiada sin popup
         }
     </script>
