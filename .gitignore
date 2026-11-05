@@ -1,0 +1,32 @@
+# Dependencias
+node_modules/
+
+# Configuración y Secretos
+.env
+.env.example
+
+# Almacenamiento Local y Backups
+database_store.json
+vehiculos_db.json
+*.json.bak
+
+# Archivos Generados (Certificados PDF)
+*.pdf
+140611773.pdf
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+logs/
+*.log
+
+# Editores y Sistema
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Docker (Opcional, pero mejor mantenerlos fuera si no se usan para el despliegue directo)
+# Dockerfile
+# .dockerignore

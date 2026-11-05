@@ -1687,6 +1687,7 @@
                 document.getElementById('vista-lista-venta').style.display = 'block';
                 document.getElementById('tab-nav-lista-venta').classList.add('active');
                 window.location.hash = 'lista-venta';
+                cargarListaVentas();
             }
         }
 
@@ -1697,6 +1698,7 @@
                 cambiarPestana('lista-cotizacion');
             } else if (hash === 'lista-venta') {
                 cambiarPestana('lista-venta');
+                cargarListaVentas();
             } else {
                 cambiarPestana('venta');
             }
