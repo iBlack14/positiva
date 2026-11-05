@@ -474,21 +474,48 @@ async function eliminarVenta(id) {
     if (!Number.isSafeInteger(id) || id <= 0) return false;
 
     if (usePostgres && pool) {
+        const client = await pool.connect();
         try {
-            const res = await pool.query('DELETE FROM ventas WHERE id = $1 RETURNING id', [id]);
-            return res.rowCount > 0;
+            await client.query('BEGIN');
+            const venta = await client.query(
+                'DELETE FROM ventas WHERE id = $1 RETURNING placa, numero_poliza',
+                [id]
+            );
+            if (venta.rowCount === 0) {
+                await client.query('COMMIT');
+                return false;
+            }
+
+            const { placa, numero_poliza: numeroPoliza } = venta.rows[0];
+            await client.query(`
+                DELETE FROM registros_apeseg
+                WHERE REGEXP_REPLACE(UPPER(placa), '[^A-Z0-9]', '', 'g') =
+                      REGEXP_REPLACE(UPPER($1), '[^A-Z0-9]', '', 'g')
+                  AND UPPER(BTRIM(numero_poliza)) = UPPER(BTRIM($2))
+            `, [placa, numeroPoliza]);
+            await client.query('COMMIT');
+            return true;
         } catch (e) {
+            await client.query('ROLLBACK');
             console.error('[DB] Error eliminando venta en Postgres:', e.message);
             throw e;
+        } finally {
+            client.release();
         }
     }
 
     const db = cargarBaseLocal();
     const ventas = Array.isArray(db.ventas) ? db.ventas : [];
-    const ventasActualizadas = ventas.filter(venta => Number(venta.id) !== id);
-    if (ventasActualizadas.length === ventas.length) return false;
+    const venta = ventas.find(item => Number(item.id) === id);
+    if (!venta) return false;
 
-    db.ventas = ventasActualizadas;
+    const cleanPlate = String(venta.placa || '').replace(/[^A-Z0-9]/gi, '').toUpperCase();
+    const numeroPoliza = String(venta.numero_poliza || '').trim().toUpperCase();
+    db.ventas = ventas.filter(item => Number(item.id) !== id);
+    db.registrosApeseg = (Array.isArray(db.registrosApeseg) ? db.registrosApeseg : []).filter(registro =>
+        String(registro.placa || '').replace(/[^A-Z0-9]/gi, '').toUpperCase() !== cleanPlate ||
+        String(registro.numero_poliza || '').trim().toUpperCase() !== numeroPoliza
+    );
     if (!guardarBaseLocal(db)) throw new Error('No se pudo eliminar la venta localmente.');
     return true;
 }

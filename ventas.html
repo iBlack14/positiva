@@ -2364,7 +2364,7 @@
         }
 
         async function eliminarVenta(venta, button) {
-            const confirmacion = `¿Eliminar del historial local la póliza ${venta.numero_poliza || '—'} de la placa ${venta.placa || '—'}? Esta acción no anula la póliza emitida en el sistema oficial y no se puede deshacer.`;
+            const confirmacion = `¿Eliminar del historial local la póliza ${venta.numero_poliza || '—'} de la placa ${venta.placa || '—'} y el registro APESEG que coincida con esa póliza? Esta acción no anula la póliza emitida en el sistema oficial y no se puede deshacer.`;
             if (!window.confirm(confirmacion)) return;
 
             button.disabled = true;
@@ -2376,7 +2376,7 @@
                 if (!response.ok) throw new Error(result.error || 'No se pudo eliminar la venta.');
 
                 await cargarListaVentas();
-                mostrarMensaje('Póliza eliminada del historial local. La póliza emitida no fue anulada.');
+                mostrarMensaje('Póliza y registro APESEG coincidente eliminados del historial local. La póliza emitida no fue anulada.');
             } catch (e) {
                 mostrarMensaje(e.message || 'No se pudo eliminar la venta.');
                 button.disabled = false;
