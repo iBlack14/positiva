@@ -727,6 +727,12 @@
             gap: 8px;
         }
 
+        .apeseg-tooltip-actions {
+            display: flex;
+            flex: 0 0 auto;
+            gap: 4px;
+        }
+
         .apeseg-tooltip-delete {
             flex: 0 0 auto;
             border: 0;
@@ -736,6 +742,22 @@
             color: #a52c2c;
             font-size: 10px;
             cursor: pointer;
+        }
+
+        .apeseg-tooltip-edit {
+            flex: 0 0 auto;
+            border: 0;
+            padding: 2px 6px;
+            border-radius: 10px;
+            background: #e7f2ff;
+            color: #245b91;
+            font-size: 10px;
+            cursor: pointer;
+        }
+
+        .apeseg-tooltip-edit:disabled {
+            cursor: wait;
+            opacity: 0.6;
         }
 
         .apeseg-tooltip-delete:disabled {
@@ -2122,6 +2144,8 @@
             }
         }
 
+        let registroApesegEnEdicion = null;
+
         function formatearFechaApeseg(valor) {
             if (!valor) return '';
             var fecha = String(valor).trim();
@@ -2272,13 +2296,24 @@
                         itemHeader.className = 'apeseg-tooltip-record-header';
                         itemHeader.appendChild(item);
 
+                        const actions = document.createElement('div');
+                        actions.className = 'apeseg-tooltip-actions';
+                        const editButton = document.createElement('button');
+                        editButton.type = 'button';
+                        editButton.className = 'apeseg-tooltip-edit';
+                        editButton.textContent = 'Editar';
+                        editButton.setAttribute('aria-label', `Editar clase y tipo del registro ${registro.numero_poliza || ''} de ${venta.placa || 'la placa'}`);
+                        editButton.addEventListener('click', () => editarRegistroApeseg(registro, venta.placa));
+                        actions.appendChild(editButton);
+
                         const deleteButton = document.createElement('button');
                         deleteButton.type = 'button';
                         deleteButton.className = 'apeseg-tooltip-delete';
                         deleteButton.textContent = 'Eliminar';
                         deleteButton.setAttribute('aria-label', `Eliminar registro APESEG ${registro.numero_poliza || ''} de ${venta.placa || 'la placa'}`);
                         deleteButton.addEventListener('click', () => eliminarRegistroApeseg(registro, venta.placa, deleteButton));
-                        itemHeader.appendChild(deleteButton);
+                        actions.appendChild(deleteButton);
+                        itemHeader.appendChild(actions);
                         tooltip.appendChild(itemHeader);
                     } else {
                         tooltip.appendChild(item);
@@ -2305,8 +2340,17 @@
         function abrirModalRegistroApeseg(placa, clase) {
             const form = document.getElementById('formRegistroApeseg');
             form.reset();
+            Array.from(form.elements).forEach(field => { field.disabled = false; });
+            registroApesegEnEdicion = null;
             form.elements.placa.value = placa || '';
             form.elements.placa.readOnly = Boolean(placa);
+            document.getElementById('modalRegistroApesegTitulo').textContent = 'Agregar registro APESEG';
+            form.querySelector('button[type="submit"]').textContent = 'Guardar registro';
+            document.querySelector('.apeseg-form-note').textContent = 'Registro ingresado manualmente; no se valida contra el sistema oficial de APESEG.';
+            const claseSelect = form.elements.clase;
+            if (clase && !Array.from(claseSelect.options).some(option => option.value === clase)) {
+                claseSelect.add(new Option(etiquetaClaseVehiculo(clase), clase));
+            }
             form.elements.clase.value = clase || '';
             const today = new Date();
             form.elements.fechaCreacion.value = [
@@ -2319,8 +2363,23 @@
             form.elements.compania.focus();
         }
 
+        function editarRegistroApeseg(registro, placa) {
+            abrirModalRegistroApeseg(placa || registro.placa, registro.clase);
+            const form = document.getElementById('formRegistroApeseg');
+            registroApesegEnEdicion = registro.id;
+            form.elements.tipoSoat.value = registro.tipo_soat || 'DIGITAL';
+            Array.from(form.elements).forEach(field => {
+                if (field.name && !['clase', 'tipoSoat'].includes(field.name)) field.disabled = true;
+            });
+            document.getElementById('modalRegistroApesegTitulo').textContent = 'Editar clase y tipo';
+            form.querySelector('button[type="submit"]').textContent = 'Guardar cambios';
+            document.querySelector('.apeseg-form-note').textContent = 'En este modo solo puedes editar la clase y el tipo de SOAT.';
+            form.elements.clase.focus();
+        }
+
         function cerrarModalRegistroApeseg() {
             document.getElementById('modalRegistroApeseg').classList.remove('show');
+            registroApesegEnEdicion = null;
         }
 
         async function guardarRegistroApeseg(event) {
@@ -2328,14 +2387,20 @@
             const form = event.currentTarget;
             const submit = form.querySelector('button[type="submit"]');
             const error = document.getElementById('apesegFormError');
-            const registro = Object.fromEntries(new FormData(form).entries());
-            registro.placa = normalizarPlaca(registro.placa || '');
+            const enEdicion = registroApesegEnEdicion !== null;
+            const registro = enEdicion
+                ? { clase: form.elements.clase.value, tipoSoat: form.elements.tipoSoat.value }
+                : Object.fromEntries(new FormData(form).entries());
+            if (!enEdicion) registro.placa = normalizarPlaca(registro.placa || '');
             error.textContent = '';
             submit.disabled = true;
 
             try {
-                const response = await fetch('/api/apeseg-registros', {
-                    method: 'POST',
+                const url = enEdicion
+                    ? `/api/apeseg-registros?id=${encodeURIComponent(registroApesegEnEdicion)}`
+                    : '/api/apeseg-registros';
+                const response = await fetch(url, {
+                    method: enEdicion ? 'PUT' : 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(registro)
                 });
@@ -2344,7 +2409,9 @@
 
                 cerrarModalRegistroApeseg();
                 await cargarListaVentas();
-                mostrarMensaje('Registro APESEG agregado al historial de la placa.');
+                mostrarMensaje(enEdicion
+                    ? 'Clase y tipo actualizados en el historial de la placa.'
+                    : 'Registro APESEG agregado al historial de la placa.');
             } catch (e) {
                 error.textContent = e.message || 'No se pudo guardar el registro.';
             } finally {

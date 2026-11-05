@@ -610,6 +610,41 @@ async function listarRegistrosApeseg() {
     return [...(db.registrosApeseg || [])].reverse();
 }
 
+async function actualizarRegistroApeseg(id, cambios) {
+    if (!Number.isSafeInteger(id) || id <= 0 ||
+        !cambios || typeof cambios.clase !== 'string' || !cambios.clase.trim() ||
+        cambios.clase.trim().length > 50 ||
+        !['DIGITAL', 'FISICO'].includes(cambios.tipoSoat)) {
+        return null;
+    }
+
+    const clase = cambios.clase.trim();
+    if (usePostgres && pool) {
+        try {
+            const res = await pool.query(`
+                UPDATE registros_apeseg
+                SET clase = $2, tipo_soat = $3
+                WHERE id = $1
+                RETURNING *
+            `, [id, clase, cambios.tipoSoat]);
+            return res.rows[0] || null;
+        } catch (e) {
+            console.error('[DB] Error actualizando registro APESEG en Postgres:', e.message);
+            throw e;
+        }
+    }
+
+    const db = cargarBaseLocal();
+    const registros = Array.isArray(db.registrosApeseg) ? db.registrosApeseg : [];
+    const registro = registros.find(item => Number(item.id) === id);
+    if (!registro) return null;
+
+    registro.clase = clase;
+    registro.tipo_soat = cambios.tipoSoat;
+    if (!guardarBaseLocal(db)) throw new Error('No se pudo actualizar el registro APESEG localmente.');
+    return registro;
+}
+
 async function eliminarRegistroApeseg(id) {
     if (!Number.isSafeInteger(id) || id <= 0) return false;
 
@@ -648,6 +683,7 @@ module.exports = {
     buscarVentasPorPlaca,
     registrarRegistroApeseg,
     listarRegistrosApeseg,
+    actualizarRegistroApeseg,
     eliminarRegistroApeseg,
     cargarBaseLocal
 };

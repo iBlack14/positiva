@@ -83,7 +83,7 @@ document.querySelector('#captcha-image').addEventListener('error',()=>{document.
 document.querySelector('#refresh-captcha').addEventListener('click',refreshCaptcha);
 refreshCaptcha();
 const statusNames={VIGENTE:'Vigente',VENCIDO:'Vencido',ANULADO:'Anulado','A\u00daN_NO_VIGENTE':'Aun no vigente'};
-function date(value,withTime=false){if(!value)return '-';const parsed=new Date(value.length===10?value+'T12:00:00-05:00':value);if(Number.isNaN(parsed.getTime()))return value;return new Intl.DateTimeFormat('es-PE',{timeZone:'America/Lima',...(withTime?{dateStyle:'short',timeStyle:'short'}:{})}).format(parsed)}
+function date(value,withTime=false){if(!value)return '-';value=String(value);const dateOnly=/^\d{4}-\d{2}-\d{2}$/.test(value);const parsed=new Date(dateOnly?value+'T12:00:00-05:00':value);if(Number.isNaN(parsed.getTime()))return value;const dateParts=new Intl.DateTimeFormat('en-GB',{timeZone:'America/Lima',day:'2-digit',month:'2-digit',year:'numeric'}).formatToParts(parsed);const part=name=>dateParts.find(item=>item.type===name)?.value||'';const formatted=`${part('day')}/${part('month')}/${part('year')}`;if(!withTime||dateOnly)return formatted;const time=new Intl.DateTimeFormat('es-PE',{timeZone:'America/Lima',hour:'numeric',minute:'2-digit'}).format(parsed);return `${formatted}, ${time}`}
 function cell(tag,value){const el=document.createElement(tag);el.textContent=value||'-';return el}
 function stateCell(record){
   const td=cell('td','');

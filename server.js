@@ -557,7 +557,7 @@ const server = http.createServer(async (req, res) => {
                             expiresAt: fin,
                             status: estadoPorVigencia(inicio, fin),
                             vehicleUse: vehiculo.uso || 'PARTICULAR',
-                            vehicleClass: vehiculo.clase || '',
+                            vehicleClass: vehiculo.clase || venta.clase || '',
                             certificateType: 'DIGITAL',
                             createdAt: new Date(venta.emitido_en).toISOString(),
                             cancelledAt: null,
@@ -578,8 +578,10 @@ const server = http.createServer(async (req, res) => {
                             expiresAt: fin,
                             status: estadoPorVigencia(inicio, fin, registro.estado),
                             vehicleUse: vehiculo.uso || 'PARTICULAR',
-                            vehicleClass: vehiculo.clase || '',
-                            certificateType: 'APESEG',
+                            vehicleClass: vehiculo.clase || registro.clase || '',
+                            certificateType: ['DIGITAL', 'FISICO'].includes(registro.tipo_soat)
+                                ? registro.tipo_soat
+                                : 'APESEG',
                             createdAt: registro.creado_en ? soloFecha(registro.creado_en) : null,
                             cancelledAt: null,
                             policeCheckAt: null,
@@ -835,6 +837,65 @@ const server = http.createServer(async (req, res) => {
             return;
         }
 
+        if (req.method === 'PUT') {
+            const idValue = String(parsedUrl.query.id || '');
+            if (!/^[1-9]\d*$/.test(idValue) || !Number.isSafeInteger(Number(idValue))) {
+                res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+                res.end(JSON.stringify({ error: 'El identificador del registro no es válido.' }));
+                return;
+            }
+
+            let body = '';
+            let bodyTooLarge = false;
+            req.on('data', chunk => {
+                if (body.length + chunk.length > 8192) {
+                    bodyTooLarge = true;
+                    return;
+                }
+                body += chunk;
+            });
+            req.on('end', async () => {
+                if (bodyTooLarge) {
+                    res.writeHead(413, { 'Content-Type': 'application/json; charset=utf-8' });
+                    res.end(JSON.stringify({ error: 'Solicitud demasiado grande.' }));
+                    return;
+                }
+
+                let data;
+                try {
+                    data = JSON.parse(body);
+                } catch {
+                    res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+                    res.end(JSON.stringify({ error: 'Solicitud inválida.' }));
+                    return;
+                }
+
+                const clase = data && typeof data.clase === 'string' ? data.clase.trim() : '';
+                const tipoSoat = data && typeof data.tipoSoat === 'string' ? data.tipoSoat.trim().toUpperCase() : '';
+                if (!clase || clase.length > 50 || !['DIGITAL', 'FISICO'].includes(tipoSoat)) {
+                    res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+                    res.end(JSON.stringify({ error: 'Selecciona una clase y un tipo de SOAT válido.' }));
+                    return;
+                }
+
+                try {
+                    const registro = await DB.actualizarRegistroApeseg(Number(idValue), { clase, tipoSoat });
+                    if (!registro) {
+                        res.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8' });
+                        res.end(JSON.stringify({ error: 'No se encontró el registro APESEG.' }));
+                        return;
+                    }
+                    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+                    res.end(JSON.stringify({ success: true, registro }));
+                } catch (e) {
+                    console.error('[APESEG] Error actualizando registro:', e.message);
+                    res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+                    res.end(JSON.stringify({ error: 'No se pudo actualizar el registro APESEG.' }));
+                }
+            });
+            return;
+        }
+
         if (req.method === 'DELETE') {
             const idValue = String(parsedUrl.query.id || '');
             if (!/^[1-9]\d*$/.test(idValue) || !Number.isSafeInteger(Number(idValue))) {
@@ -861,7 +922,7 @@ const server = http.createServer(async (req, res) => {
         }
 
         if (req.method !== 'POST') {
-            res.writeHead(405, { 'Content-Type': 'application/json; charset=utf-8', Allow: 'GET, POST, DELETE' });
+            res.writeHead(405, { 'Content-Type': 'application/json; charset=utf-8', Allow: 'GET, POST, PUT, DELETE' });
             res.end(JSON.stringify({ error: 'Método no permitido.' }));
             return;
         }
