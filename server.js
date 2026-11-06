@@ -20,6 +20,7 @@ function leerConfig() {
         cookieLaPositiva: process.env.LAPOSITIVA_COOKIE || '',
         databaseUrl: process.env.DATABASE_URL || '',
         apiKey: process.env.API_KEY || '',
+        reniecApiHost: process.env.RENIEC_API_HOST || 'soat-rec.stkkft.easypanel.host',
         timeoutMs: 10000
     };
 
@@ -41,6 +42,7 @@ function leerConfig() {
                 if (key === 'LAPOSITIVA_COOKIE' || key === 'COOKIE_LAPOSITIVA') cfg.cookieLaPositiva = val;
                 if (key === 'DATABASE_URL' || key === 'POSTGRES_URL') cfg.databaseUrl = val;
                 if (key === 'API_KEY') cfg.apiKey = val;
+                if (key === 'RENIEC_API_HOST') cfg.reniecApiHost = val;
                 if (key === 'TIMEOUT_MS') cfg.timeoutMs = parseInt(val, 10) || 10000;
             }
         }
@@ -232,11 +234,11 @@ function consultarYupay(placa, token, timeoutMs) {
     });
 }
 
-function consultarReniec(dni, apiKey, timeoutMs) {
+function consultarReniec(dni, apiKey, timeoutMs, host) {
     return new Promise((resolve, reject) => {
         const body = JSON.stringify({ dni });
         const req = https.request({
-            hostname: 'bot-sunarpapi.stkkft.easypanel.host',
+            hostname: host,
             port: 443,
             path: '/reniec/consulta',
             method: 'POST',
@@ -485,7 +487,9 @@ const server = http.createServer(async (req, res) => {
         }
 
         try {
-            const resultado = await consultarReniec(dni, config.apiKey, config.timeoutMs);
+            const resultado = await consultarReniec(
+                dni, config.apiKey, config.timeoutMs, config.reniecApiHost
+            );
             if (resultado.statusCode < 200 || resultado.statusCode >= 300) {
                 const message = resultado.data && (resultado.data.message || resultado.data.error);
                 const status = resultado.statusCode === 404 ? 404 : 502;
