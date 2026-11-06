@@ -120,6 +120,54 @@ function normalizarPlaca(p) {
     return DB.normalizarPlaca(p);
 }
 
+function validarDatosRegistroApeseg(data) {
+    if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
+
+    const placa = normalizarPlaca(typeof data.placa === 'string' ? data.placa.trim() : '');
+    const compania = typeof data.compania === 'string' ? data.compania.trim() : '';
+    const numeroPoliza = typeof data.numeroPoliza === 'string' ? data.numeroPoliza.trim() : '';
+    const clase = typeof data.clase === 'string' ? data.clase.trim() : '';
+    const estado = typeof data.estado === 'string' ? data.estado.trim().toUpperCase() : '';
+    const tipoSoat = typeof data.tipoSoat === 'string' ? data.tipoSoat.trim().toUpperCase() : '';
+    const costoValue = typeof data.costo === 'string' ? data.costo.trim() : String(data.costo ?? '');
+    const costo = Number(costoValue);
+    const fechaCreacion = typeof data.fechaCreacion === 'string' ? data.fechaCreacion : '';
+    const fechaInicio = typeof data.fechaInicio === 'string' ? data.fechaInicio : '';
+    const fechaFin = typeof data.fechaFin === 'string' ? data.fechaFin : '';
+    const placaLimpia = placa.replace(/[^A-Z0-9]/g, '');
+    const fechaValida = value =>
+        /^\d{4}-\d{2}-\d{2}$/.test(value) &&
+        !Number.isNaN(Date.parse(`${value}T00:00:00Z`)) &&
+        new Date(`${value}T00:00:00Z`).toISOString().slice(0, 10) === value;
+    const estadosValidos = ['VIGENTE', 'VENCIDO', 'AUN_NO_VIGENTE', 'ANULADO'];
+
+    if (placaLimpia.length < 6 || placaLimpia.length > 9 ||
+        !compania || compania.length > 100 ||
+        !numeroPoliza || numeroPoliza.length > 100 ||
+        !clase || clase.length > 50 ||
+        !/^\d{1,8}(?:\.\d{1,2})?$/.test(costoValue) ||
+        !Number.isFinite(costo) || costo < 0 ||
+        !['DIGITAL', 'FISICO'].includes(tipoSoat) ||
+        !estadosValidos.includes(estado) ||
+        !fechaValida(fechaCreacion) || !fechaValida(fechaInicio) ||
+        !fechaValida(fechaFin) || fechaInicio > fechaFin) {
+        return null;
+    }
+
+    return {
+        placa,
+        clase,
+        compania,
+        numeroPoliza,
+        estado,
+        tipoSoat,
+        costo,
+        fechaCreacion,
+        fechaInicio,
+        fechaFin
+    };
+}
+
 function esPlacaMoto(p) {
     if (!p) return false;
     const clean = p.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
@@ -870,16 +918,15 @@ const server = http.createServer(async (req, res) => {
                     return;
                 }
 
-                const clase = data && typeof data.clase === 'string' ? data.clase.trim() : '';
-                const tipoSoat = data && typeof data.tipoSoat === 'string' ? data.tipoSoat.trim().toUpperCase() : '';
-                if (!clase || clase.length > 50 || !['DIGITAL', 'FISICO'].includes(tipoSoat)) {
+                const cambios = validarDatosRegistroApeseg(data);
+                if (!cambios) {
                     res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
-                    res.end(JSON.stringify({ error: 'Selecciona una clase y un tipo de SOAT válido.' }));
+                    res.end(JSON.stringify({ error: 'Completa placa, clase, compañía, póliza, costo, tipo de SOAT, estado y vigencias válidas.' }));
                     return;
                 }
 
                 try {
-                    const registro = await DB.actualizarRegistroApeseg(Number(idValue), { clase, tipoSoat });
+                    const registro = await DB.actualizarRegistroApeseg(Number(idValue), cambios);
                     if (!registro) {
                         res.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8' });
                         res.end(JSON.stringify({ error: 'No se encontró el registro APESEG.' }));
@@ -952,52 +999,15 @@ const server = http.createServer(async (req, res) => {
                 return;
             }
 
-            const placa = normalizarPlaca(typeof data.placa === 'string' ? data.placa.trim() : '');
-            const compania = typeof data.compania === 'string' ? data.compania.trim() : '';
-            const numeroPoliza = typeof data.numeroPoliza === 'string' ? data.numeroPoliza.trim() : '';
-            const clase = typeof data.clase === 'string' ? data.clase.trim() : '';
-            const estado = typeof data.estado === 'string' ? data.estado.trim().toUpperCase() : '';
-            const tipoSoat = typeof data.tipoSoat === 'string' ? data.tipoSoat.trim().toUpperCase() : '';
-            const costoValue = typeof data.costo === 'string' ? data.costo.trim() : String(data.costo ?? '');
-            const costo = Number(costoValue);
-            const fechaCreacion = typeof data.fechaCreacion === 'string' ? data.fechaCreacion : '';
-            const fechaInicio = typeof data.fechaInicio === 'string' ? data.fechaInicio : '';
-            const fechaFin = typeof data.fechaFin === 'string' ? data.fechaFin : '';
-            const placaLimpia = placa.replace(/[^A-Z0-9]/g, '');
-            const fechaValida = value =>
-                /^\d{4}-\d{2}-\d{2}$/.test(value) &&
-                !Number.isNaN(Date.parse(`${value}T00:00:00Z`)) &&
-                new Date(`${value}T00:00:00Z`).toISOString().slice(0, 10) === value;
-            const estadosValidos = ['VIGENTE', 'VENCIDO', 'AUN_NO_VIGENTE', 'ANULADO'];
-
-            if (placaLimpia.length < 6 || placaLimpia.length > 9 ||
-                !compania || compania.length > 100 ||
-                !numeroPoliza || numeroPoliza.length > 100 ||
-                !clase || clase.length > 50 ||
-                !/^\d{1,8}(?:\.\d{1,2})?$/.test(costoValue) ||
-                !Number.isFinite(costo) || costo < 0 ||
-                !['DIGITAL', 'FISICO'].includes(tipoSoat) ||
-                !estadosValidos.includes(estado) ||
-                !fechaValida(fechaCreacion) || !fechaValida(fechaInicio) ||
-                !fechaValida(fechaFin) || fechaInicio > fechaFin) {
+            const registroDatos = validarDatosRegistroApeseg(data);
+            if (!registroDatos) {
                 res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
                 res.end(JSON.stringify({ error: 'Completa placa, clase, compañía, póliza, costo, tipo de SOAT, estado y vigencias válidas.' }));
                 return;
             }
 
             try {
-                const registro = await DB.registrarRegistroApeseg({
-                    placa,
-                    clase,
-                    compania,
-                    numeroPoliza,
-                    estado,
-                    tipoSoat,
-                    costo,
-                    fechaCreacion,
-                    fechaInicio,
-                    fechaFin
-                });
+                const registro = await DB.registrarRegistroApeseg(registroDatos);
                 res.writeHead(201, { 'Content-Type': 'application/json; charset=utf-8' });
                 res.end(JSON.stringify({ success: true, registro }));
             } catch (e) {

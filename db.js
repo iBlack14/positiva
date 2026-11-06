@@ -631,22 +631,41 @@ async function listarRegistrosApeseg() {
 }
 
 async function actualizarRegistroApeseg(id, cambios) {
-    if (!Number.isSafeInteger(id) || id <= 0 ||
-        !cambios || typeof cambios.clase !== 'string' || !cambios.clase.trim() ||
-        cambios.clase.trim().length > 50 ||
-        !['DIGITAL', 'FISICO'].includes(cambios.tipoSoat)) {
+    if (!Number.isSafeInteger(id) || id <= 0 || !cambios ||
+        typeof cambios.placa !== 'string' || !normalizarPlaca(cambios.placa) ||
+        typeof cambios.clase !== 'string' || !cambios.clase.trim() || cambios.clase.trim().length > 50 ||
+        typeof cambios.compania !== 'string' || !cambios.compania.trim() || cambios.compania.trim().length > 100 ||
+        typeof cambios.numeroPoliza !== 'string' || !cambios.numeroPoliza.trim() || cambios.numeroPoliza.trim().length > 100 ||
+        !['VIGENTE', 'VENCIDO', 'AUN_NO_VIGENTE', 'ANULADO'].includes(cambios.estado) ||
+        !['DIGITAL', 'FISICO'].includes(cambios.tipoSoat) ||
+        !Number.isFinite(Number(cambios.costo)) || Number(cambios.costo) < 0 ||
+        !/^\d{4}-\d{2}-\d{2}$/.test(cambios.fechaCreacion) ||
+        !/^\d{4}-\d{2}-\d{2}$/.test(cambios.fechaInicio) ||
+        !/^\d{4}-\d{2}-\d{2}$/.test(cambios.fechaFin) ||
+        cambios.fechaInicio > cambios.fechaFin) {
         return null;
     }
 
+    const placa = normalizarPlaca(cambios.placa);
     const clase = cambios.clase.trim();
+    const compania = cambios.compania.trim();
+    const numeroPoliza = cambios.numeroPoliza.trim();
+    const costo = Number(cambios.costo);
     if (usePostgres && pool) {
         try {
             const res = await pool.query(`
                 UPDATE registros_apeseg
-                SET clase = $2, tipo_soat = $3
+                SET placa = $2, clase = $3, compania = $4, numero_poliza = $5,
+                    estado = $6, fecha_inicio = $7, fecha_fin = $8,
+                    tipo_soat = $9, costo = $10,
+                    creado_en = $11::date + TIME '12:00:00'
                 WHERE id = $1
                 RETURNING *
-            `, [id, clase, cambios.tipoSoat]);
+            `, [
+                id, placa, clase, compania, numeroPoliza, cambios.estado,
+                cambios.fechaInicio, cambios.fechaFin, cambios.tipoSoat,
+                costo, cambios.fechaCreacion
+            ]);
             return res.rows[0] || null;
         } catch (e) {
             console.error('[DB] Error actualizando registro APESEG en Postgres:', e.message);
@@ -659,8 +678,16 @@ async function actualizarRegistroApeseg(id, cambios) {
     const registro = registros.find(item => Number(item.id) === id);
     if (!registro) return null;
 
+    registro.placa = placa;
     registro.clase = clase;
+    registro.compania = compania;
+    registro.numero_poliza = numeroPoliza;
+    registro.estado = cambios.estado;
+    registro.fecha_inicio = cambios.fechaInicio;
+    registro.fecha_fin = cambios.fechaFin;
     registro.tipo_soat = cambios.tipoSoat;
+    registro.costo = costo;
+    registro.creado_en = `${cambios.fechaCreacion}T12:00:00.000Z`;
     if (!guardarBaseLocal(db)) throw new Error('No se pudo actualizar el registro APESEG localmente.');
     return registro;
 }

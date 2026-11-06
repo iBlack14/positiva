@@ -2302,7 +2302,7 @@
                         editButton.type = 'button';
                         editButton.className = 'apeseg-tooltip-edit';
                         editButton.textContent = 'Editar';
-                        editButton.setAttribute('aria-label', `Editar clase y tipo del registro ${registro.numero_poliza || ''} de ${venta.placa || 'la placa'}`);
+                        editButton.setAttribute('aria-label', `Editar registro ${registro.numero_poliza || ''} de ${venta.placa || 'la placa'}`);
                         editButton.addEventListener('click', () => editarRegistroApeseg(registro, venta.placa));
                         actions.appendChild(editButton);
 
@@ -2367,14 +2367,20 @@
             abrirModalRegistroApeseg(placa || registro.placa, registro.clase);
             const form = document.getElementById('formRegistroApeseg');
             registroApesegEnEdicion = registro.id;
+            form.elements.placa.value = registro.placa || placa || '';
+            form.elements.placa.readOnly = false;
+            form.elements.compania.value = registro.compania || '';
+            form.elements.numeroPoliza.value = registro.numero_poliza || '';
+            form.elements.costo.value = registro.costo ?? '';
+            form.elements.estado.value = registro.estado || 'VIGENTE';
             form.elements.tipoSoat.value = registro.tipo_soat || 'DIGITAL';
-            Array.from(form.elements).forEach(field => {
-                if (field.name && !['clase', 'tipoSoat'].includes(field.name)) field.disabled = true;
-            });
-            document.getElementById('modalRegistroApesegTitulo').textContent = 'Editar clase y tipo';
+            form.elements.fechaCreacion.value = String(registro.creado_en || '').slice(0, 10);
+            form.elements.fechaInicio.value = String(registro.fecha_inicio || '').slice(0, 10);
+            form.elements.fechaFin.value = String(registro.fecha_fin || '').slice(0, 10);
+            document.getElementById('modalRegistroApesegTitulo').textContent = 'Editar registro APESEG';
             form.querySelector('button[type="submit"]').textContent = 'Guardar cambios';
-            document.querySelector('.apeseg-form-note').textContent = 'En este modo solo puedes editar la clase y el tipo de SOAT.';
-            form.elements.clase.focus();
+            document.querySelector('.apeseg-form-note').textContent = 'Puedes actualizar los datos del registro ingresado manualmente.';
+            form.elements.placa.focus();
         }
 
         function cerrarModalRegistroApeseg() {
@@ -2388,10 +2394,8 @@
             const submit = form.querySelector('button[type="submit"]');
             const error = document.getElementById('apesegFormError');
             const enEdicion = registroApesegEnEdicion !== null;
-            const registro = enEdicion
-                ? { clase: form.elements.clase.value, tipoSoat: form.elements.tipoSoat.value }
-                : Object.fromEntries(new FormData(form).entries());
-            if (!enEdicion) registro.placa = normalizarPlaca(registro.placa || '');
+            const registro = Object.fromEntries(new FormData(form).entries());
+            registro.placa = normalizarPlaca(registro.placa || '');
             error.textContent = '';
             submit.disabled = true;
 
@@ -2410,7 +2414,7 @@
                 cerrarModalRegistroApeseg();
                 await cargarListaVentas();
                 mostrarMensaje(enEdicion
-                    ? 'Clase y tipo actualizados en el historial de la placa.'
+                    ? 'Registro APESEG actualizado en el historial de la placa.'
                     : 'Registro APESEG agregado al historial de la placa.');
             } catch (e) {
                 error.textContent = e.message || 'No se pudo guardar el registro.';
