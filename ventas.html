@@ -331,6 +331,71 @@
             box-shadow: 0 0 5px rgba(0, 203, 193, 0.4);
         }
 
+        .sunarp-panel {
+            margin: 0 0 16px;
+            padding: 12px 14px;
+            border: 1px solid #c9d2d5;
+            border-radius: 4px;
+            background: #f8fbfb;
+            color: #333;
+            font-size: 11px;
+        }
+
+        .sunarp-panel[hidden] {
+            display: none;
+        }
+
+        .sunarp-panel h3 {
+            margin: 0 0 9px;
+            color: #007f79;
+            font-size: 13px;
+        }
+
+        .sunarp-status {
+            margin: 0 0 10px;
+            color: #555;
+        }
+
+        .sunarp-status-error {
+            color: #a52c2c;
+        }
+
+        .sunarp-fields {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 6px 12px;
+            margin-bottom: 10px;
+        }
+
+        .sunarp-field {
+            overflow-wrap: anywhere;
+        }
+
+        .sunarp-field strong {
+            color: #555;
+        }
+
+        .sunarp-panel details {
+            margin-top: 8px;
+        }
+
+        .sunarp-panel summary {
+            color: #007f79;
+            cursor: pointer;
+            font-weight: 700;
+        }
+
+        .sunarp-panel pre {
+            max-height: 220px;
+            overflow: auto;
+            margin: 7px 0 0;
+            padding: 8px;
+            border: 1px solid #e1e5e6;
+            background: #fff;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+        }
+
         /* Grilla de 3 columnas para Vehículo */
         .grid-3-col {
             display: grid;
@@ -1214,6 +1279,11 @@
                             <i class="icon-eraser"></i> Limpiar
                         </button>
                     </div>
+                    <section id="sunarpConsulta" class="sunarp-panel" aria-live="polite" hidden>
+                        <h3>Consulta SUNARP</h3>
+                        <p id="sunarpEstado" class="sunarp-status"></p>
+                        <div id="sunarpResultados"></div>
+                    </section>
 
                     <!-- Grilla de 3 columnas -->
                     <div class="grid-3-col">
@@ -2535,8 +2605,160 @@
             return trimmed;
         }
 
-        // Consulta en la API de Ventas / ObtenerInformacionPlaca con manejo multi-formato
-        function buscarPlaca() {
+        function mostrarObjetoSunarp(contenedor, titulo, datos) {
+            var seccion = document.createElement('div');
+            var encabezado = document.createElement('strong');
+            encabezado.textContent = titulo;
+            seccion.appendChild(encabezado);
+
+            var campos = document.createElement('div');
+            campos.className = 'sunarp-fields';
+            if (datos && typeof datos === 'object' && !Array.isArray(datos)) {
+                Object.keys(datos).forEach(function (clave) {
+                    var item = document.createElement('div');
+                    item.className = 'sunarp-field';
+                    var etiqueta = document.createElement('strong');
+                    etiqueta.textContent = clave + ': ';
+                    var valor = document.createElement('span');
+                    var dato = datos[clave];
+                    valor.textContent = dato === null || dato === undefined
+                        ? '—'
+                        : (typeof dato === 'object' ? JSON.stringify(dato) : String(dato));
+                    item.appendChild(etiqueta);
+                    item.appendChild(valor);
+                    campos.appendChild(item);
+                });
+            } else {
+                var valorSimple = document.createElement('div');
+                valorSimple.className = 'sunarp-field';
+                valorSimple.textContent = datos === null || datos === undefined
+                    ? 'Sin datos'
+                    : (typeof datos === 'object' ? JSON.stringify(datos) : String(datos));
+                campos.appendChild(valorSimple);
+            }
+
+            seccion.appendChild(campos);
+            contenedor.appendChild(seccion);
+        }
+
+        function mostrarRespuestaSunarp(datos) {
+            var panel = document.getElementById('sunarpConsulta');
+            var estado = document.getElementById('sunarpEstado');
+            var resultados = document.getElementById('sunarpResultados');
+            var sunarp = datos && datos.sunarp;
+            resultados.textContent = '';
+            estado.className = 'sunarp-status';
+            estado.textContent = sunarp
+                ? 'Datos encontrados. Verifique la información antes de continuar.'
+                : 'La consulta respondió, pero no incluyó datos SUNARP.';
+
+            if (sunarp) {
+                if (sunarp.model !== undefined) {
+                    mostrarObjetoSunarp(resultados, 'Datos originales SUNARP', sunarp.model);
+                }
+
+                var ocr = sunarp.ocr || {};
+                if (ocr.campos !== undefined) {
+                    mostrarObjetoSunarp(resultados, 'Datos extraídos por OCR', ocr.campos);
+                }
+
+                if (ocr.lineas !== undefined || ocr.texto !== undefined) {
+                    var detalles = document.createElement('details');
+                    var resumen = document.createElement('summary');
+                    resumen.textContent = 'Ver lectura original del OCR';
+                    detalles.appendChild(resumen);
+
+                    [['Líneas', ocr.lineas], ['Texto', ocr.texto]].forEach(function (entrada) {
+                        if (entrada[1] === undefined || entrada[1] === null) return;
+                        var titulo = document.createElement('strong');
+                        titulo.textContent = entrada[0];
+                        var contenido = document.createElement('pre');
+                        contenido.textContent = typeof entrada[1] === 'string'
+                            ? entrada[1]
+                            : JSON.stringify(entrada[1], null, 2);
+                        detalles.appendChild(titulo);
+                        detalles.appendChild(contenido);
+                    });
+                    resultados.appendChild(detalles);
+                }
+            }
+            panel.hidden = false;
+        }
+
+        function mostrarErrorSunarp(error) {
+            var panel = document.getElementById('sunarpConsulta');
+            var estado = document.getElementById('sunarpEstado');
+            document.getElementById('sunarpResultados').textContent = '';
+            estado.className = 'sunarp-status sunarp-status-error';
+            estado.textContent = error.message;
+            panel.hidden = false;
+        }
+
+        async function consultarSunarpPlaca(placa) {
+            var panel = document.getElementById('sunarpConsulta');
+            var estado = document.getElementById('sunarpEstado');
+            var resultados = document.getElementById('sunarpResultados');
+            panel.hidden = false;
+            resultados.textContent = '';
+            estado.className = 'sunarp-status';
+            estado.textContent = 'Consultando SUNARP...';
+
+            try {
+                var baseUrl = window.location.protocol === 'file:' ? 'http://localhost:3000' : '';
+                var response = await fetch(baseUrl + '/api/sunarp/consulta', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ placa: placa.replace(/[^A-Za-z0-9]/g, '').toUpperCase() })
+                });
+                var data = await response.json().catch(function () { return {}; });
+                if (!response.ok) {
+                    var mensaje;
+                    if (response.status === 401) {
+                        mensaje = data.code === 'SESSION_REQUIRED'
+                            ? data.error
+                            : 'SUNARP rechazó la clave de acceso (HTTP 401). Verifique API_KEY o SUNARP_API_KEY en el backend.';
+                    } else if (response.status === 503) {
+                        mensaje = 'El servicio SUNARP no está disponible o falta configurar API_KEY o SUNARP_API_KEY (HTTP 503).';
+                    } else if (response.status === 504) {
+                        mensaje = 'La consulta SUNARP excedió el tiempo de espera (HTTP 504).';
+                    } else {
+                        mensaje = (data.error || 'No se pudo completar la consulta SUNARP.') + ' (HTTP ' + response.status + ').';
+                    }
+                    throw new Error(mensaje);
+                }
+                mostrarRespuestaSunarp(data);
+                return data;
+            } catch (error) {
+                mostrarErrorSunarp(error.message || 'No se pudo completar la consulta SUNARP.');
+                return null;
+            }
+        }
+
+        // PRIMARIA: llena el formulario con los datos OCR de nuestra API SUNARP
+        function aplicarDatosDesdeOcr(placa, ocr) {
+            var esMoto = esPlacaMoto(placa);
+            var anio = (ocr.anio_modelo || '').toString().replace(/\D/g, '').slice(0, 4);
+            aplicarDatosVehiculo({
+                placa: placa,
+                clase: esMoto ? "MOTO" : "AUTO",
+                marca: ocr.marca || "",
+                modelo: ocr.modelo || "",
+                modeloEsp: ocr.modelo || "",
+                serie: ocr.serie_vin || "",
+                anio: anio,
+                asientos: esMoto ? "2" : "5",
+                uso: "PARTICULAR",
+                categoria: esMoto ? "L3" : "M1",
+                version: "STD",
+                zona: detectarZonaPorPlaca(placa),
+                formaPago: "Efectivo",
+                moneda: "Soles",
+                monto: esMoto ? "S/ 140.00" : "S/ 65.00"
+            });
+        }
+
+        // SECUNDARIA: Yupay.dev llena el formulario; la búsqueda existente sigue completando como respaldo.
+        async function buscarPlaca() {
             var raw = document.getElementById('txtPlaca').value.trim();
             if (!raw) {
                 mostrarMensaje("Debe ingresar un número de placa.");
@@ -2546,6 +2768,15 @@
 
             var placa = normalizarPlaca(raw);
             document.getElementById('txtPlaca').value = placa;
+
+            var sunarpData = await consultarSunarpPlaca(placa);
+
+            // PRIMARIA: si el OCR de SUNARP trajo marca/modelo, usarlo y no llamar a Yupay
+            var ocrCampos = sunarpData && sunarpData.sunarp && sunarpData.sunarp.ocr && sunarpData.sunarp.ocr.campos;
+            if (ocrCampos && (ocrCampos.marca || ocrCampos.modelo)) {
+                aplicarDatosDesdeOcr(placa, ocrCampos);
+                return;
+            }
 
             var esMoto = esPlacaMoto(placa);
             var tipoPlaca = esMoto ? 2 : 1;

@@ -20,6 +20,7 @@ function leerConfig() {
         cookieLaPositiva: process.env.LAPOSITIVA_COOKIE || '',
         databaseUrl: process.env.DATABASE_URL || '',
         apiKey: process.env.API_KEY || '',
+        sunarpApiKey: process.env.SUNARP_API_KEY || '',
         reniecApiHost: process.env.RENIEC_API_HOST || 'soat-rec.stkkft.easypanel.host',
         timeoutMs: 10000
     };
@@ -42,6 +43,7 @@ function leerConfig() {
                 if (key === 'LAPOSITIVA_COOKIE' || key === 'COOKIE_LAPOSITIVA') cfg.cookieLaPositiva = val;
                 if (key === 'DATABASE_URL' || key === 'POSTGRES_URL') cfg.databaseUrl = val;
                 if (key === 'API_KEY') cfg.apiKey = val;
+                if (key === 'SUNARP_API_KEY' && !process.env.SUNARP_API_KEY) cfg.sunarpApiKey = val;
                 if (key === 'RENIEC_API_HOST') cfg.reniecApiHost = val;
                 if (key === 'TIMEOUT_MS') cfg.timeoutMs = parseInt(val, 10) || 10000;
             }
@@ -49,6 +51,8 @@ function leerConfig() {
     } catch (e) {
         console.error('[ENV] Error leyendo archivo .env:', e.message);
     }
+
+    if (!cfg.sunarpApiKey) cfg.sunarpApiKey = cfg.apiKey;
 
     return cfg;
 }
@@ -59,7 +63,7 @@ function guardarConfig(cfg) {
         if (fs.existsSync(ENV_FILE)) {
             current = fs.readFileSync(ENV_FILE, 'utf-8');
         } else {
-            current = '# Configuración del Sistema SOAT La Positiva Local\nPORT=3000\nYUPAY_TOKEN=\nLAPOSITIVA_COOKIE=\nDATABASE_URL=\nTIMEOUT_MS=10000\n';
+            current = '# Configuración del Sistema SOAT La Positiva Local\nPORT=3000\nYUPAY_TOKEN=\nLAPOSITIVA_COOKIE=\nDATABASE_URL=\nSUNARP_API_KEY=\nTIMEOUT_MS=10000\n';
         }
 
         const updateKey = (text, key, val) => {
@@ -275,6 +279,53 @@ function consultarReniec(dni, apiKey, timeoutMs, host) {
 
         req.on('timeout', () => {
             req.destroy(new Error('TIMEOUT_RENIEC'));
+        });
+        req.on('error', error => reject(error));
+        req.end(body);
+    });
+}
+
+function consultarSunarp(placa, apiKey, timeoutMs) {
+    return new Promise((resolve, reject) => {
+        const body = JSON.stringify({ placa });
+        const req = https.request({
+            hostname: 'soat-rec.stkkft.easypanel.host',
+            port: 443,
+            path: '/sunarp/consulta',
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Content-Length': Buffer.byteLength(body),
+                'X-API-Key': apiKey,
+                'Accept': 'application/json'
+            },
+            timeout: timeoutMs || 10000
+        }, response => {
+            let responseBody = '';
+            let responseTooLarge = false;
+            response.on('data', chunk => {
+                responseBody += chunk;
+                if (Buffer.byteLength(responseBody, 'utf8') > 1024 * 1024) {
+                    responseTooLarge = true;
+                    response.destroy();
+                }
+            });
+            response.on('end', () => {
+                if (responseTooLarge) {
+                    reject(new Error('RESPONSE_TOO_LARGE'));
+                    return;
+                }
+                try {
+                    resolve({ statusCode: response.statusCode, data: JSON.parse(responseBody) });
+                } catch {
+                    resolve({ statusCode: response.statusCode, raw: responseBody });
+                }
+            });
+            response.on('error', error => reject(error));
+        });
+
+        req.on('timeout', () => {
+            req.destroy(new Error('TIMEOUT_SUNARP'));
         });
         req.on('error', error => reject(error));
         req.end(body);
@@ -658,6 +709,99 @@ const server = http.createServer(async (req, res) => {
                 res.end(JSON.stringify({ message: 'No se pudo completar la consulta.' }));
             }
         });
+        return;
+    }
+
+    if (pathname === '/api/sunarp/consulta' && req.method === 'POST') {
+        const sesionValida = await DB.validarSesion(sessionToken);
+        if (!sesionValida) {
+            res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({
+                code: 'SESSION_REQUIRED',
+                error: 'Debe iniciar sesión para consultar una placa.'
+            }));
+            return;
+        }
+
+        let body = '';
+        try {
+            for await (const chunk of req) {
+                body += chunk;
+                if (Buffer.byteLength(body, 'utf8') > 1024) {
+                    res.writeHead(413, { 'Content-Type': 'application/json; charset=utf-8' });
+                    res.end(JSON.stringify({ error: 'Solicitud demasiado grande.' }));
+                    return;
+                }
+            }
+        } catch (error) {
+            console.error('[SUNARP] Error leyendo solicitud:', error.message);
+            res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({ error: 'No se pudo leer la solicitud.' }));
+            return;
+        }
+
+        let data;
+        try {
+            data = JSON.parse(body);
+        } catch {
+            res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({ error: 'Solicitud inválida.' }));
+            return;
+        }
+
+        const placa = typeof data.placa === 'string'
+            ? data.placa.replace(/[^A-Za-z0-9]/g, '').toUpperCase()
+            : '';
+        if (!placa || placa.length > 10) {
+            res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({ error: 'Ingrese una placa válida.' }));
+            return;
+        }
+
+        const config = leerConfig();
+        if (!config.sunarpApiKey) {
+            res.writeHead(503, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({ error: 'No está configurada la clave API_KEY o SUNARP_API_KEY en el backend.' }));
+            return;
+        }
+
+        try {
+            const resultado = await consultarSunarp(placa, config.sunarpApiKey, config.timeoutMs);
+            const status = resultado.statusCode || 502;
+            if (status < 200 || status >= 300) {
+                const message = resultado.data && (resultado.data.message || resultado.data.error);
+                res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' });
+                res.end(JSON.stringify({
+                    error: typeof message === 'string'
+                        ? message
+                        : (typeof resultado.raw === 'string' && resultado.raw
+                            ? resultado.raw.slice(0, 500)
+                            : 'La consulta SUNARP no pudo completarse.')
+                }));
+                return;
+            }
+
+            if (!resultado.data) {
+                res.writeHead(502, { 'Content-Type': 'application/json; charset=utf-8' });
+                res.end(JSON.stringify({ error: 'SUNARP devolvió una respuesta inválida.' }));
+                return;
+            }
+
+            res.writeHead(200, {
+                'Content-Type': 'application/json; charset=utf-8',
+                'Cache-Control': 'no-store'
+            });
+            res.end(JSON.stringify(resultado.data));
+        } catch (error) {
+            const timedOut = error.message === 'TIMEOUT_SUNARP';
+            console.error('[SUNARP] Error consultando placa:', error.message);
+            res.writeHead(timedOut ? 504 : 502, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({
+                error: timedOut
+                    ? 'La consulta SUNARP tardó demasiado. Inténtalo nuevamente.'
+                    : 'No se pudo conectar con SUNARP.'
+            }));
+        }
         return;
     }
 
