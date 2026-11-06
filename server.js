@@ -579,9 +579,9 @@ const server = http.createServer(async (req, res) => {
                             status: estadoPorVigencia(inicio, fin, registro.estado),
                             vehicleUse: vehiculo.uso || 'PARTICULAR',
                             vehicleClass: vehiculo.clase || registro.clase || '',
-                            certificateType: ['DIGITAL', 'FISICO'].includes(registro.tipo_soat)
-                                ? registro.tipo_soat
-                                : 'APESEG',
+                            certificateType: ['DIGITAL', 'FISICO'].includes(String(registro.tipo_soat || '').toUpperCase())
+                                ? String(registro.tipo_soat).toUpperCase()
+                                : 'DIGITAL',
                             createdAt: registro.creado_en ? soloFecha(registro.creado_en) : null,
                             cancelledAt: null,
                             policeCheckAt: null,

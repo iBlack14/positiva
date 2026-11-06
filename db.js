@@ -75,7 +75,17 @@ function sincronizarVehiculosIniciales(dbLocal) {}
 async function initDB(databaseUrl) {
     let localData = cargarBaseLocal();
     if (!Array.isArray(localData.registrosApeseg)) localData.registrosApeseg = [];
-    guardarBaseLocal(localData);
+    let localRecordsUpdated = 0;
+    localData.registrosApeseg.forEach(registro => {
+        const tipoSoat = String(registro.tipo_soat || '').trim().toUpperCase();
+        if (tipoSoat !== 'DIGITAL' && tipoSoat !== 'FISICO') {
+            registro.tipo_soat = 'DIGITAL';
+            localRecordsUpdated++;
+        }
+    });
+    if (localRecordsUpdated && !guardarBaseLocal(localData)) {
+        throw new Error('No se pudieron actualizar los tipos de SOAT en la base local.');
+    }
 
     if (databaseUrl && databaseUrl.startsWith('postgres') && pg) {
         try {
@@ -170,6 +180,16 @@ async function initDB(databaseUrl) {
                 ALTER TABLE ventas
                     ADD COLUMN IF NOT EXISTS uso VARCHAR(50);
             `);
+
+            const migratedRecords = await pool.query(`
+                UPDATE registros_apeseg
+                SET tipo_soat = 'DIGITAL'
+                WHERE tipo_soat IS NULL
+                    OR UPPER(BTRIM(tipo_soat)) NOT IN ('DIGITAL', 'FISICO')
+            `);
+            if (migratedRecords.rowCount) {
+                console.log(`[DB] ${migratedRecords.rowCount} registro(s) APESEG actualizado(s) a tipo DIGITAL.`);
+            }
 
             // Asegurar usuario admin por defecto en PostgreSQL
             const userCheck = await pool.query('SELECT id FROM usuarios WHERE username = $1', ['admin']);
