@@ -1187,10 +1187,10 @@ const server = http.createServer(async (req, res) => {
                 }
                 const resultado = await DB.registrarVenta(venta, usuarioId);
                 res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-                res.end(JSON.stringify({
-                    success: true,
+                res.end(JSON.stringify({ 
+                    success: true, 
                     venta: resultado,
-                    mensaje: 'SOAT emitido correctamente y registrado en APESEG.'
+                    mensaje: 'SOAT emitido correctamente y registrado en APESEG.' 
                 }));
             } catch (e) {
                 res.writeHead(400, { 'Content-Type': 'application/json' });
