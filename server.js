@@ -1541,27 +1541,25 @@ const server = http.createServer(async (req, res) => {
 const cfg = leerConfig();
 const PORT = cfg.puerto || 3000;
 
-if (!cfg.adminUser.trim() || !cfg.adminPassword.trim()) {
-    console.error('[CONFIG] ADMIN_USER y ADMIN_PASSWORD deben configurarse en el entorno antes de iniciar.');
-    process.exitCode = 1;
-} else {
-    DB.initDB(cfg.databaseUrl, {
-        adminUser: cfg.adminUser,
-        adminPassword: cfg.adminPassword,
-        adminNombre: cfg.adminNombre,
-        adminAgencia: cfg.adminAgencia
-    }).then((dbStatus) => {
-        server.listen(PORT, '0.0.0.0', () => {
-            console.log('====================================================');
-            console.log('   SOAT LA POSITIVA - SISTEMA CON BASE DE DATOS');
-            console.log('   AGENCIA: TACNA - HUGO CHURA Y ASOCIADOS CORREDORES');
-            console.log('====================================================');
-            console.log(` Servidor activo en: http://localhost:${PORT}`);
-            console.log(` Base de datos: ${dbStatus.tipo} (${dbStatus.estado})`);
-            console.log(` Seguridad: Acceso protegido a ventas/dashboard.`);
-            console.log(' Usuario administrador configurado.');
-            console.log(` Yupay API: ${cfg.tokenYupay ? 'SI (SUNARP en vivo)' : 'NO'}`);
-            console.log('====================================================\n');
-        });
+DB.initDB(cfg.databaseUrl, {
+    adminUser: cfg.adminUser,
+    adminPassword: cfg.adminPassword,
+    adminNombre: cfg.adminNombre,
+    adminAgencia: cfg.adminAgencia
+}).then((dbStatus) => {
+    server.listen(PORT, '0.0.0.0', () => {
+        console.log('====================================================');
+        console.log('   SOAT LA POSITIVA - SISTEMA CON BASE DE DATOS');
+        console.log('   AGENCIA: TACNA - HUGO CHURA Y ASOCIADOS CORREDORES');
+        console.log('====================================================');
+        console.log(` Servidor activo en: http://localhost:${PORT}`);
+        console.log(` Base de datos: ${dbStatus.tipo} (${dbStatus.estado})`);
+        console.log(` Seguridad: Acceso protegido a ventas/dashboard.`);
+        console.log(' Usuario administrador configurado.');
+        console.log(` Yupay API: ${cfg.tokenYupay ? 'SI (SUNARP en vivo)' : 'NO'}`);
+        console.log('====================================================\n');
     });
-}
+}).catch(error => {
+    console.error(`[CONFIG] No se pudo inicializar la base de datos: ${error.message}`);
+    process.exitCode = 1;
+});

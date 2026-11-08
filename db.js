@@ -74,17 +74,7 @@ function cargarBaseLocal() {
         console.error('[DB] Error leyendo base local:', e.message);
     }
     return {
-        usuarios: [
-            {
-                id: 1,
-                username: cachedAdminConfig.adminUser.trim().toLowerCase(),
-                password: hashPassword(cachedAdminConfig.adminPassword),
-                nombreCompleto: (cachedAdminConfig.adminNombre || 'Administrador').trim(),
-                agencia: (cachedAdminConfig.adminAgencia || 'Agencia Principal').trim(),
-                rol: 'ADMIN',
-                creadoEn: new Date().toISOString()
-            }
-        ],
+        usuarios: [],
         sesiones: [],
         vehiculos: {},
         ventas: [],
@@ -112,10 +102,8 @@ async function initDB(databaseUrl, adminConfig = {}) {
         if (adminConfig.adminNombre) cachedAdminConfig.adminNombre = adminConfig.adminNombre;
         if (adminConfig.adminAgencia) cachedAdminConfig.adminAgencia = adminConfig.adminAgencia;
     }
-    if (!cachedAdminConfig.adminUser.trim() || !cachedAdminConfig.adminPassword.trim()) {
-        throw new Error('ADMIN_USER y ADMIN_PASSWORD deben configurarse antes de inicializar la base de datos.');
-    }
     let localData = cargarBaseLocal();
+    if (!Array.isArray(localData.usuarios)) localData.usuarios = [];
     if (!Array.isArray(localData.registrosApeseg)) localData.registrosApeseg = [];
     let localRecordsUpdated = 0;
     localData.registrosApeseg.forEach(registro => {
@@ -236,27 +224,25 @@ async function initDB(databaseUrl, adminConfig = {}) {
                 console.log(`[DB] ${migratedRecords.rowCount} registro(s) APESEG actualizado(s) a tipo DIGITAL.`);
             }
 
-            // Asegurar el usuario administrador configurado en PostgreSQL.
-            const adminUser = cachedAdminConfig.adminUser.trim().toLowerCase();
-            const adminPass = cachedAdminConfig.adminPassword.trim();
-            const adminNombre = (cachedAdminConfig.adminNombre || 'Administrador').trim();
-            const adminAgencia = (cachedAdminConfig.adminAgencia || 'Agencia Principal').trim();
-
-            const userCheck = await pool.query('SELECT id, password, rol FROM usuarios WHERE LOWER(username) = LOWER($1)', [adminUser]);
-            const adminPassHashed = hashPassword(adminPass);
+            const userCheck = await pool.query('SELECT id FROM usuarios LIMIT 1');
             if (userCheck.rows.length === 0) {
+                const adminUser = cachedAdminConfig.adminUser.trim().toLowerCase();
+                const adminPass = cachedAdminConfig.adminPassword.trim();
+                if (!adminUser || !adminPass) {
+                    const error = new Error('La base de datos PostgreSQL no tiene usuarios; configura ADMIN_USER y ADMIN_PASSWORD para crear la cuenta inicial.');
+                    error.code = 'ADMIN_BOOTSTRAP_REQUIRED';
+                    throw error;
+                }
                 await pool.query(`
                     INSERT INTO usuarios (username, password, nombre_completo, agencia, rol)
                     VALUES ($1, $2, $3, $4, 'ADMIN')
-                `, [adminUser, adminPassHashed, adminNombre, adminAgencia]);
+                `, [
+                    adminUser,
+                    hashPassword(adminPass),
+                    (cachedAdminConfig.adminNombre || 'Administrador').trim(),
+                    (cachedAdminConfig.adminAgencia || 'Agencia Principal').trim()
+                ]);
                 console.log(`[DB] Usuario administrador "${adminUser}" creado en PostgreSQL con contraseña encriptada.`);
-            } else {
-                // Si la contraseña guardada no coincide o no está encriptada, actualizar a hash seguro
-                if (!verifyPassword(adminPass, userCheck.rows[0].password)) {
-                    await pool.query('UPDATE usuarios SET rol = $1, password = $2 WHERE id = $3', ['ADMIN', adminPassHashed, userCheck.rows[0].id]);
-                } else if (!userCheck.rows[0].password.includes(':')) {
-                    await pool.query('UPDATE usuarios SET password = $1 WHERE id = $2', [adminPassHashed, userCheck.rows[0].id]);
-                }
             }
 
             // Sincronizar vehículos de catálogo inicial a PostgreSQL
@@ -264,9 +250,31 @@ async function initDB(databaseUrl, adminConfig = {}) {
 
             return { tipo: 'POSTGRESQL', estado: 'CONECTADO' };
         } catch (err) {
+            if (err.code === 'ADMIN_BOOTSTRAP_REQUIRED') throw err;
             console.log(`[DB] No se pudo conectar a PostgreSQL (${err.message}). Usando base de datos persistente local.`);
             usePostgres = false;
         }
+    }
+
+    if (localData.usuarios.length === 0) {
+        const adminUser = cachedAdminConfig.adminUser.trim().toLowerCase();
+        const adminPass = cachedAdminConfig.adminPassword.trim();
+        if (!adminUser || !adminPass) {
+            throw new Error('La base de datos local no tiene usuarios; configura ADMIN_USER y ADMIN_PASSWORD para crear la cuenta inicial.');
+        }
+        localData.usuarios.push({
+            id: 1,
+            username: adminUser,
+            password: hashPassword(adminPass),
+            nombreCompleto: (cachedAdminConfig.adminNombre || 'Administrador').trim(),
+            agencia: (cachedAdminConfig.adminAgencia || 'Agencia Principal').trim(),
+            rol: 'ADMIN',
+            creadoEn: new Date().toISOString()
+        });
+        if (!guardarBaseLocal(localData)) {
+            throw new Error('No se pudo guardar la cuenta inicial en la base de datos local.');
+        }
+        console.log(`[DB] Usuario administrador "${adminUser}" creado en la base local.`);
     }
 
     console.log('[DB] Base de datos activa: Motor Local Autónomo (database_store.json)');
