@@ -1488,7 +1488,7 @@ const server = http.createServer(async (req, res) => {
         '/login.html': 'admin.html'
     };
     const publicPath = publicRoutes[pathname] || (pathname === '/' ? 'index.html' : pathname);
-    let filePath = path.resolve(BASE_DIR, publicPath);
+    let filePath = path.resolve(BASE_DIR, publicPath.replace(/^[/\\]+/, ''));
     const relativePath = path.relative(BASE_DIR, filePath);
     const pathSegments = relativePath.split(path.sep);
     const isWithinBase = relativePath !== '..' &&
