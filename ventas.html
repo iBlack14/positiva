@@ -449,6 +449,15 @@
             cursor: not-allowed;
         }
 
+        .ctrl-input.monto-editable-discreto,
+        .ctrl-input.monto-editable-discreto:focus {
+            border-color: transparent;
+            background: transparent !important;
+            box-shadow: none;
+            padding-left: 0;
+            cursor: text;
+        }
+
         .ctrl-select {
             width: 100%;
             height: 26px;
@@ -1588,7 +1597,7 @@
                             <div class="field-row">
                                 <span class="field-label">Monto a Pagar</span>
                                 <div class="field-control">
-                                    <input type="text" id="txtMontoPagar" class="ctrl-input" value="" readonly style="font-weight:bold; color:#FF6A39; background:#fff2ed;" />
+                                    <input type="text" id="txtMontoPagar" class="ctrl-input monto-editable-discreto" value="" inputmode="decimal" aria-label="Monto a pagar, editable" style="font-weight:bold; color:#FF6A39;" />
                                 </div>
                             </div>
                         </div>
@@ -2145,6 +2154,25 @@
                 });
             }
 
+            var inpMontoPagar = document.getElementById('txtMontoPagar');
+            if (inpMontoPagar) {
+                inpMontoPagar.addEventListener('focus', function() {
+                    this.select();
+                });
+                inpMontoPagar.addEventListener('input', function() {
+                    var prima = document.getElementById('txtPrima');
+                    if (prima) prima.value = this.value;
+                });
+                inpMontoPagar.addEventListener('blur', function() {
+                    var monto = parsearMontoEditable(this.value);
+                    if (monto === null) return;
+
+                    this.value = 'S/ ' + monto.toFixed(2);
+                    var prima = document.getElementById('txtPrima');
+                    if (prima) prima.value = this.value;
+                });
+            }
+
             var inpPlacaCot = document.getElementById('txtPlacaCot');
             if (inpPlacaCot) {
                 inpPlacaCot.addEventListener('input', function() {
@@ -2276,14 +2304,29 @@
             document.getElementById('emisionResultFeedback').textContent = mensaje;
         }
 
+        function parsearMontoEditable(valor) {
+            var montoStr = String(valor || '').trim().replace(/^S\/\s*/i, '').replace(',', '.');
+            if (!/^\d+(?:\.\d{1,2})?$/.test(montoStr)) return null;
+
+            var monto = Number(montoStr);
+            return Number.isFinite(monto) ? monto : null;
+        }
+
         async function continuarConEmision(accion) {
+            var monto = null;
+            if (accion === 'emitir') {
+                monto = parsearMontoEditable(obtenerValorRevision('txtMontoPagar'));
+                if (monto === null) {
+                    mostrarMensaje('Ingrese un monto válido (por ejemplo, 65.00) antes de emitir.');
+                    return;
+                }
+            }
+
             cerrarRevisionEmision();
             if (accion === 'emitir') {
                 const placa = obtenerValorRevision('txtPlaca');
                 const contratante = obtenerValorRevision('txtNombreContratanteVenta');
                 const documento = obtenerValorRevision('txtNumDocVenta');
-                const montoStr = obtenerValorRevision('txtMontoPagar') || '0';
-                const monto = parseFloat(montoStr.replace(/[^0-9.]/g, '')) || 0;
                 const formaPago = obtenerValorRevision('txtFormaPago');
                 const uso = document.getElementById('cmbUso').value;
                 if (!['PARTICULAR', 'PUBLICO', 'COMERCIAL'].includes(uso)) {
