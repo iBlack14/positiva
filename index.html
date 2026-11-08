@@ -1,0 +1,447 @@
+<!DOCTYPE HTML>
+<html class="full" onkeypress="presionaEnter(event);">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="La Positiva Seguros - SOAT en Línea">
+    <meta name="author" content="La Positiva">
+    <title>SOAT en Línea - Inicio de Sesión</title>
+    <link rel="icon" type="image/x-icon" href="favicon.ico" />
+
+    <!-- Hojas de estilo La Positiva -->
+    <link href="Content/plugins/Font-Awesome/css/font-awesome.css?v=2000" rel="stylesheet" />
+    <link href="Content/Bootstrap/bootstrap.min.css?v=1000" rel="stylesheet" />
+    <link href="Content/login.css?v=2002" rel="stylesheet" />
+    <link href="Content/Bootstrap/bootstrap.dialog.css?v=1000" rel="stylesheet" />
+    <link href="Content/spinner.css?v=1" rel="stylesheet" />
+
+    <style type="text/css">
+        #timer label {
+            color: #FF6A39;
+        }
+        .bootstrap-dialog {
+            z-index: 2000 !important;
+        }
+        .bootstrap-dialog .modal-backdrop {
+            z-index: 1999 !important;
+        }
+
+        /* Estilos para reCAPTCHA simulado en Localhost */
+        .mock-recaptcha-box {
+            width: 304px;
+            height: 78px;
+            background-color: #f9f9f9;
+            border: 1px solid #d3d3d3;
+            border-radius: 3px;
+            box-shadow: 0 0 4px 1px rgba(0, 0, 0, 0.08);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 12px;
+            cursor: pointer;
+            user-select: none;
+            box-sizing: border-box;
+            transition: all 0.2s ease;
+        }
+        .mock-recaptcha-box:hover {
+            border-color: #c1c1c1;
+            box-shadow: 0 0 6px 1px rgba(0, 0, 0, 0.12);
+        }
+        .mock-recaptcha-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .mock-checkbox {
+            width: 28px;
+            height: 28px;
+            background-color: #fff;
+            border: 2px solid #c1c1c1;
+            border-radius: 2px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            transition: border-color 0.2s, background-color 0.2s;
+        }
+        .mock-recaptcha-box:hover .mock-checkbox {
+            border-color: #b2b2b2;
+        }
+        .mock-recaptcha-text {
+            font-size: 14px;
+            color: #222;
+            font-weight: normal;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+        .mock-recaptcha-right {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin-right: -2px;
+        }
+        .mock-recaptcha-logo svg {
+            display: block;
+        }
+        .mock-recaptcha-brand {
+            font-size: 10px;
+            color: #555;
+            font-weight: 500;
+            line-height: 1.1;
+            margin-top: 2px;
+        }
+        .mock-recaptcha-terms {
+            font-size: 8px;
+            color: #555;
+            line-height: 1.2;
+        }
+        .mock-recaptcha-terms a {
+            color: #555 !important;
+            text-decoration: none !important;
+        }
+        .mock-recaptcha-terms a:hover {
+            text-decoration: underline !important;
+        }
+        .mock-spinner {
+            display: none;
+            width: 24px;
+            height: 24px;
+            animation: mock-rot 1.2s linear infinite;
+        }
+        .mock-spinner circle {
+            stroke: #4285F4;
+            stroke-linecap: round;
+            animation: mock-dash 1.2s ease-in-out infinite;
+        }
+        @keyframes mock-rot {
+            100% { transform: rotate(360deg); }
+        }
+        @keyframes mock-dash {
+            0% { stroke-dasharray: 1, 150; stroke-dashoffset: 0; }
+            50% { stroke-dasharray: 90, 150; stroke-dashoffset: -35; }
+            100% { stroke-dasharray: 90, 150; stroke-dashoffset: -124; }
+        }
+        .mock-checkmark {
+            display: none;
+            width: 22px;
+            height: 22px;
+        }
+        .mock-checkbox.loading {
+            border-color: transparent !important;
+            background: transparent !important;
+        }
+        .mock-checkbox.loading .mock-spinner {
+            display: block;
+        }
+        .mock-checkbox.checked {
+            border-color: transparent !important;
+            background: transparent !important;
+        }
+        .mock-checkbox.checked .mock-checkmark {
+            display: block;
+        }
+    </style>
+
+    <!-- Scripts Base -->
+    <script src="Scripts/Tools/jquery-3.6.1.min.js?v=1000"></script>
+    <script src="Scripts/Tools/bootstrap.bundle.min.js?v=1000"></script>
+    <script src="Scripts/Tools/bootstrap.dialog.js?v=1000"></script>
+    <script src="Scripts/common/jsencrypt.min.js?v=1000"></script>
+
+    <!-- Funciones Globales del Portal de Acceso -->
+    <script>
+        var nameAplicativo = '/';
+        var bReCaptcha = '1';
+        var ServiceIpp = 'https://api.ipify.org?format=json';
+        var ipPublica = '0.0.0.0';
+        window._mockRecaptchaToken = "";
+
+        // Funciones de validación de teclas
+        window.validakeyespacioblanco = function(e) {
+            var ev = e || window.event;
+            var k = ev ? (ev.keyCode || ev.which) : 0;
+            if (k === 32) {
+                if (ev && ev.preventDefault) ev.preventDefault();
+                if (ev) ev.returnValue = false;
+                return false;
+            }
+            return true;
+        };
+
+        window.validakeyOnlyNumbers = function(e) {
+            var ev = e || window.event;
+            var k = ev ? (ev.keyCode || ev.which) : 0;
+            if (k > 31 && (k < 48 || k > 57)) {
+                if (ev && ev.preventDefault) ev.preventDefault();
+                if (ev) ev.returnValue = false;
+                return false;
+            }
+            return true;
+        };
+
+        window.presionaEnter = function(e) {
+            var ev = e || window.event;
+            var k = ev ? (ev.keyCode || ev.which) : 0;
+            if (k === 13) {
+                window.logueo();
+            }
+        };
+
+        // Simulación reCAPTCHA
+        window.grecaptcha = {
+            getResponse: function () {
+                return window._mockRecaptchaToken || "";
+            },
+            reset: function () {
+                window._mockRecaptchaToken = "";
+                var cb = document.getElementById("mockRecaptchaCheckbox");
+                if (cb) {
+                    cb.classList.remove("checked");
+                    cb.classList.remove("loading");
+                }
+            }
+        };
+
+        window.toggleMockRecaptcha = function() {
+            var cb = document.getElementById("mockRecaptchaCheckbox");
+            if (!cb || cb.classList.contains("loading")) return;
+
+            if (window._mockRecaptchaToken) {
+                window.grecaptcha.reset();
+                return;
+            }
+
+            cb.classList.add("loading");
+            setTimeout(function () {
+                cb.classList.remove("loading");
+                cb.classList.add("checked");
+                window._mockRecaptchaToken = "simulated_localhost_recaptcha_token_" + Date.now();
+            }, 350);
+        };
+
+        // Alertas
+        window.alertValida = function(mensaje) {
+            if (window.BootstrapDialog && typeof window.BootstrapDialog.show === 'function') {
+                var $textAndPic = $('<div></div>');
+                $textAndPic.append(' <i class="icono_alerta_modal"><img src="Images/iconos/color/icono-alerta.png" alt="" style="width:35px; margin-right:8px;"></i> ');
+                $textAndPic.append('<div class="content_texto_modal" style="display:inline-block;"><span class="error-msg">' + mensaje + '</span></div>');
+                BootstrapDialog.show({
+                    title: 'Alerta',
+                    cssClass: 'actualiza-datos',
+                    type: BootstrapDialog.TYPE_WARNING,
+                    message: $textAndPic,
+                    closable: false,
+                    buttons: [{
+                        cssClass: 'btn-principal',
+                        label: 'Aceptar',
+                        action: function (dialogRef) {
+                            dialogRef.close();
+                        }
+                    }]
+                });
+            } else {
+                alert(mensaje);
+            }
+        };
+
+        window.mostrarAlerta = function(mensaje) {
+            var el = document.getElementById('mensajeAlertaPersonalizada');
+            if (el) el.textContent = mensaje;
+            var box = document.getElementById('alertaPersonalizada');
+            if (box) box.style.display = 'block';
+        };
+
+        window.ocultarAlertaPersonalizada = function() {
+            var box = document.getElementById('alertaPersonalizada');
+            if (box) box.style.display = 'none';
+        };
+
+        window.recuperarContrasena = function() {
+            window.alertValida('Para restablecer su clave comuníquese con el administrador del sistema.');
+        };
+
+        // Función Principal de Inicio de Sesión
+        window.logueo = function() {
+            var btn = $("#btn_Aceptar");
+            btn.prop("disabled", true);
+
+            var usuarioInput = $("#Usuario");
+            var passwordInput = $("#Password");
+            var usuario = usuarioInput.val() ? usuarioInput.val().trim() : "";
+            var password = passwordInput.val() ? passwordInput.val().trim() : "";
+
+            if (usuario === "") {
+                window.alertValida("Debe ingresar su nombre de Usuario.");
+                usuarioInput.focus();
+                btn.removeAttr('disabled');
+                return false;
+            }
+            if (password === "") {
+                window.alertValida("Debe ingresar su Password.");
+                passwordInput.focus();
+                btn.removeAttr('disabled');
+                return false;
+            }
+
+            // Auto-validar el captcha si no se ha hecho clic
+            if (!window._mockRecaptchaToken) {
+                var cb = document.getElementById("mockRecaptchaCheckbox");
+                if (cb) cb.classList.add("checked");
+                window._mockRecaptchaToken = "simulated_localhost_recaptcha_token_" + Date.now();
+            }
+
+            $("#loader").show();
+
+            fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: usuario.toLowerCase(),
+                    password: password
+                })
+            })
+            .then(function(res) {
+                return res.json().then(function(data) {
+                    return { ok: res.ok, data: data };
+                });
+            })
+            .then(function(res) {
+                $("#loader").hide();
+                if (res.ok && res.data.success) {
+                    sessionStorage.setItem("authenticated", "true");
+                    sessionStorage.setItem("user", (res.data.user && res.data.user.nombreCompleto) || "VALENTIN PACOMPIA PANDA");
+                    sessionStorage.setItem("agency", (res.data.user && res.data.user.agencia) || "TACNA - HUGO CHURA Y ASOCIADOS CORREDORES");
+                    sessionStorage.setItem("rol", (res.data.user && res.data.user.rol) || "ADMIN");
+                    window.location.href = res.data.redirect || "ventas.html";
+                } else {
+                    btn.removeAttr('disabled');
+                    window.grecaptcha.reset();
+                    window.alertValida((res.data && res.data.mensaje) || "Usuario o contraseña incorrectos.");
+                }
+            })
+            .catch(function(err) {
+                $("#loader").hide();
+                btn.removeAttr('disabled');
+                window.alertValida("Error de conexión al autenticar. Verifique que el servidor esté activo.");
+            });
+        };
+
+        $(document).ready(function() {
+            $("#Usuario").focus();
+            // Pre-marcar el captcha simulado para agilizar pruebas en entorno local
+            window.toggleMockRecaptcha();
+        });
+    </script>
+</head>
+<body style="background-color: transparent; margin-top: 25px;">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-2 col-md-3 col-sm-12 col-xs-12">
+                <img src="Images/lapositiva_logo.png" alt="La Positiva">
+            </div>
+        </div>
+
+        <div class="row formTop">
+            <div class="titulo_login">SOAT en Línea</div>
+            <form class="form-horizontal" role="form" onsubmit="return false;">
+                <input name="__RequestVerificationToken" type="hidden" value="2tLBfQLibha8LzLpBiUj_zUyeQnnzHug8Qu0ZbGAe6cHre0m_Yt89rQVVoCy1xicKxAOAVx5tkMSnCJeJAYDho6qGt2Pvt9cYw_8_rd-Qs41" />
+                <div class="form-group">
+                    <div class="col-lg-12 subtitulo_login">
+                        Formulario de Acceso al Sistema
+                    </div>
+                </div>
+
+                <div class="form-group" style="padding-top:15px;">
+                    <label for="Usuario" class="col-lg-2 col-md-1 col-sm-2 col-xs-12 control-label-login">Usuario</label>
+                    <div class="col-lg-3 col-md-4 col-sm-4 col-xs-7 col-lg-offset-0 col-md-offset-1 col-sm-offset-0 col-xs-offset-0">
+                        <input autocomplete="off" class="form-control-login input-sm" id="Usuario" name="Usuario" onkeypress="return validakeyespacioblanco(event);" type="text" value="" />
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="Password" class="col-lg-2 col-md-1 col-sm-2 col-xs-12 control-label-login">Contraseña</label>
+                    <div class="col-lg-3 col-md-4 col-sm-4 col-xs-7 col-lg-offset-0 col-md-offset-1 col-sm-offset-0 col-xs-offset-0">
+                        <input autocomplete="off" class="form-control-login input-sm" id="Password" name="Password" onkeypress="return validakeyespacioblanco(event);" style="-webkit-text-security: disc;" type="password" />
+                    </div>
+                </div>
+
+                <!-- reCAPTCHA v2 Simulado (No da error de localhost) -->
+                <div class="form-group" style="margin-top: 10px; margin-bottom: 15px;">
+                    <div class="col-lg-offset-2 col-md-offset-1 col-sm-2 col-xs-0"></div>
+                    <div class="col-lg-5 col-md-6 col-sm-7 col-xs-12">
+                        <div class="mock-recaptcha-box" id="mockRecaptcha" onclick="toggleMockRecaptcha()" title="Haga clic para validar reCAPTCHA">
+                            <div class="mock-recaptcha-left">
+                                <div class="mock-checkbox" id="mockRecaptchaCheckbox">
+                                    <svg class="mock-spinner" id="mockRecaptchaSpinner" viewBox="0 0 50 50">
+                                        <circle cx="25" cy="25" r="20" fill="none" stroke-width="5"></circle>
+                                    </svg>
+                                    <svg class="mock-checkmark" id="mockRecaptchaCheckmark" viewBox="0 0 24 24">
+                                        <path fill="none" stroke="#0f9d58" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" d="M4 12.5l5.5 5.5L20 6" />
+                                    </svg>
+                                </div>
+                                <span class="mock-recaptcha-text">No soy un robot</span>
+                            </div>
+                            <div class="mock-recaptcha-right">
+                                <div class="mock-recaptcha-logo">
+                                    <svg width="28" height="28" viewBox="0 0 64 64">
+                                        <path fill="#4285F4" d="M32 4c-5.9 0-11.4 1.8-16 4.9L22 17c3-1.9 6.4-3 10-3 9.9 0 18 8.1 18 18 0 2.4-.5 4.6-1.3 6.7l7.8 4.5C58.5 39.3 60 35.8 60 32 60 16.5 47.5 4 32 4z"/>
+                                        <path fill="#9AA0A6" d="M32 60c5.9 0 11.4-1.8 16-4.9L42 47c-3 1.9-6.4 3-10 3-9.9 0-18-8.1-18-18 0-2.4.5-4.6 1.3-6.7l-7.8-4.5C5.5 24.7 4 28.2 4 32c0 15.5 12.5 28 28 28z"/>
+                                        <path fill="#34A853" d="M48 32c0 8.8-7.2 16-16 16-2.5 0-4.8-.6-6.9-1.6L20 54c3.6 1.3 7.6 2 12 2 13.3 0 24-10.7 24-24h-8z"/>
+                                    </svg>
+                                </div>
+                                <div class="mock-recaptcha-brand">reCAPTCHA</div>
+                                <div class="mock-recaptcha-terms">
+                                    <a href="https://www.google.com/intl/es/policies/privacy/" target="_blank" onclick="event.stopPropagation()">Privacidad</a> - 
+                                    <a href="https://www.google.com/intl/es/policies/terms/" target="_blank" onclick="event.stopPropagation()">Condiciones</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="col-lg-10" style="text-align:left">
+                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                        <a href="#" rel="noopener noreferrer" onclick="recuperarContrasena();" style="text-decoration: underline;">Recuperar contraseña</a>
+                        &nbsp;&nbsp;&nbsp;&nbsp;<input type="button" id="btn_Aceptar" class="btn_Aceptar" value="Aceptar" onclick="logueo();" />
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <div class="row">
+            <footer class="footer">
+                <input type="hidden" id="divpub" value="MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAn0TwXN4Xy+uVWIN+jYxkBrR428R9W8bJ46fF62dAR4ATU2wOVQRmYNl2b46wVbPdMUxEgOpARFFuPGcpARityOkD+Twd+Z+itkkP5hEIyfTz/hW2oaUS8KVsMJ3RjKkw6wgRARMeYVTTtxJtpBQLWpNubxsCjkpoViNb0hWSkiZWrKZEhv2rxvxVZxkBXJh6FzDydy3Ew4p7nGJoBtSbyBTFjYllJLQppJhPOI6xOmaEK91EQeiUvdEdI4+7wgp1Sp8TEuLriXIVGlRzjpMzixOfB6VdKpxF/yhjys4y2s+bqc9vyJKri/XzvLrEVOjW0GEDLSi/J7p6AVB29wO3JwIDAQAB" />
+                <p>Copyright La Positiva © 2016  - All Rights Reserved</p>
+            </footer>
+        </div>
+    </div>
+
+    <!-- Spinner Loader -->
+    <div id="loader" style="display: none;">
+        <div class="overlay" style="z-index: 2000;"></div>
+        <div class="spinner" style="z-index: 2000;"></div>
+    </div>
+
+    <!-- Modal Alerta Personalizada -->
+    <div id="alertaPersonalizada" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 2000;">
+        <div class="overlay" style="position: absolute; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 2001;"></div>
+        <div class="modal-dialog-custom" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 2002; width: 90%; max-width: 500px; background: #fff; border-radius: 6px; box-shadow: 0 0 15px rgba(0,0,0,0.3);">
+            <div class="modal-header-custom" style="padding: 1rem; border-bottom: 1px solid #dee2e6; background-color: #6F79BD !important;">
+                <h5 class="modal-title-custom" style="margin: 0; color: #fff; font-size: 16px;">Alerta</h5>
+            </div>
+            <div class="modal-body-custom" style="padding: 1.5rem;">
+                <div style="display: flex; align-items: center;">
+                    <img src="Images/iconos/color/icono-alerta.png" alt="Alerta" style="width: 40px; height: 40px; margin-right: 1rem;">
+                    <span id="mensajeAlertaPersonalizada" class="error-msg" style="font-size: 14px; color: #212529;">Mensaje de alerta</span>
+                </div>
+            </div>
+            <div class="modal-footer-custom" style="padding: 1rem; border-top: 1px solid #dee2e6; text-align: right;">
+                <button class="btn btn-principal" onclick="ocultarAlertaPersonalizada()">Aceptar</button>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+

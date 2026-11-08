@@ -22,6 +22,10 @@ function leerConfig() {
         apiKey: process.env.API_KEY || '',
         sunarpApiKey: process.env.SUNARP_API_KEY || '',
         reniecApiHost: process.env.RENIEC_API_HOST || 'soat-rec.stkkft.easypanel.host',
+        adminUser: process.env.ADMIN_USER || 'admin',
+        adminPassword: process.env.ADMIN_PASSWORD || 'admin1',
+        adminNombre: process.env.ADMIN_NOMBRE || 'VALENTIN PACOMPIA PANDA',
+        adminAgencia: process.env.ADMIN_AGENCIA || 'TACNA - HUGO CHURA Y ASOCIADOS CORREDORES',
         timeoutMs: 10000
     };
 
@@ -45,6 +49,10 @@ function leerConfig() {
                 if (key === 'API_KEY') cfg.apiKey = val;
                 if (key === 'SUNARP_API_KEY' && !process.env.SUNARP_API_KEY) cfg.sunarpApiKey = val;
                 if (key === 'RENIEC_API_HOST') cfg.reniecApiHost = val;
+                if (key === 'ADMIN_USER') cfg.adminUser = val;
+                if (key === 'ADMIN_PASSWORD') cfg.adminPassword = val;
+                if (key === 'ADMIN_NOMBRE') cfg.adminNombre = val;
+                if (key === 'ADMIN_AGENCIA') cfg.adminAgencia = val;
                 if (key === 'TIMEOUT_MS') cfg.timeoutMs = parseInt(val, 10) || 10000;
             }
         }
@@ -977,6 +985,9 @@ const server = http.createServer(async (req, res) => {
     // 5.1 ENDPOINT: Emitir SOAT
     // ==========================================
     if (pathname === '/api/emitir-soat' && req.method === 'POST') {
+        const sesionValida = await DB.validarSesion(sessionToken);
+        const usuarioId = sesionValida ? (sesionValida.userId || sesionValida.id) : null;
+
         let body = '';
         req.on('data', chunk => { body += chunk; });
         req.on('end', async () => {
@@ -992,7 +1003,7 @@ const server = http.createServer(async (req, res) => {
                 if (!venta.numeroPoliza) {
                     venta.numeroPoliza = '1406' + Math.floor(100000 + Math.random() * 900000);
                 }
-                const resultado = await DB.registrarVenta(venta);
+                const resultado = await DB.registrarVenta(venta, usuarioId);
                 res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
                 res.end(JSON.stringify({ 
                     success: true, 
@@ -1204,8 +1215,11 @@ const server = http.createServer(async (req, res) => {
         }
 
         try {
+            const esAdmin = (sesionValida.rol || '').toUpperCase() === 'ADMIN';
+            const filtroUsuarioId = esAdmin ? null : (sesionValida.userId || sesionValida.id);
+
             const [ventas, registrosApeseg] = await Promise.all([
-                DB.listarVentas(),
+                DB.listarVentas(filtroUsuarioId),
                 DB.listarRegistrosApeseg()
             ]);
             const registrosPorPlaca = new Map();
@@ -1221,20 +1235,23 @@ const server = http.createServer(async (req, res) => {
                 const placa = String(venta.placa || '').replace(/[^A-Z0-9]/gi, '').toUpperCase();
                 return { ...venta, registros_apeseg: registrosPorPlaca.get(placa) || [] };
             });
-            registrosPorPlaca.forEach((registros, placa) => {
-                if (!placasConVenta.has(placa)) {
-                    ventasConRegistros.push({
-                        placa: registros[0].placa,
-                        contratante_nombre: '—',
-                        clase: registros[0].clase || 'REGISTRO APESEG',
-                        emitido_en: registros[0].creado_en,
-                        monto: registros[0].costo,
-                        numero_poliza: null,
-                        registro_apeseg_sin_venta: true,
-                        registros_apeseg: registros
-                    });
-                }
-            });
+            // Registros APESEG sueltos solo visibles para Admin
+            if (esAdmin) {
+                registrosPorPlaca.forEach((registros, placa) => {
+                    if (!placasConVenta.has(placa)) {
+                        ventasConRegistros.push({
+                            placa: registros[0].placa,
+                            contratante_nombre: '—',
+                            clase: registros[0].clase || 'REGISTRO APESEG',
+                            emitido_en: registros[0].creado_en,
+                            monto: registros[0].costo,
+                            numero_poliza: null,
+                            registro_apeseg_sin_venta: true,
+                            registros_apeseg: registros
+                        });
+                    }
+                });
+            }
             res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
             res.end(JSON.stringify(ventasConRegistros));
         } catch (e) {
@@ -1247,6 +1264,88 @@ const server = http.createServer(async (req, res) => {
 
     if (pathname === '/api/ventas') {
         res.writeHead(405, { 'Content-Type': 'application/json; charset=utf-8', Allow: 'GET, DELETE' });
+        res.end(JSON.stringify({ error: 'Método no permitido.' }));
+        return;
+    }
+
+    // ==========================================
+    // 5.3 ENDPOINTS: Gestión de Usuarios (Solo Admin)
+    // ==========================================
+    if (pathname === '/api/usuarios') {
+        const sesionValida = await DB.validarSesion(sessionToken);
+        if (!sesionValida) {
+            res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({ error: 'Debe iniciar sesión.' }));
+            return;
+        }
+
+        const esAdmin = (sesionValida.rol || '').toUpperCase() === 'ADMIN';
+        if (!esAdmin) {
+            res.writeHead(403, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({ error: 'Acceso denegado. Solo administradores pueden gestionar usuarios.' }));
+            return;
+        }
+
+        if (req.method === 'GET') {
+            try {
+                const usuarios = await DB.listarUsuarios();
+                res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+                res.end(JSON.stringify({ success: true, data: usuarios }));
+            } catch (e) {
+                res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+                res.end(JSON.stringify({ error: 'No se pudo obtener la lista de usuarios.' }));
+            }
+            return;
+        }
+
+        if (req.method === 'POST') {
+            let body = '';
+            req.on('data', chunk => { body += chunk; });
+            req.on('end', async () => {
+                try {
+                    const data = JSON.parse(body);
+                    const nuevoUsuario = await DB.crearUsuario({
+                        username: data.username,
+                        password: data.password,
+                        nombreCompleto: data.nombreCompleto,
+                        agencia: data.agencia,
+                        rol: data.rol || 'VENDEDOR'
+                    });
+                    res.writeHead(201, { 'Content-Type': 'application/json; charset=utf-8' });
+                    res.end(JSON.stringify({ success: true, data: nuevoUsuario }));
+                } catch (e) {
+                    res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+                    res.end(JSON.stringify({ error: e.message || 'Error al crear usuario.' }));
+                }
+            });
+            return;
+        }
+
+        if (req.method === 'DELETE') {
+            const idValue = String(parsedUrl.query.id || '');
+            if (!/^[1-9]\d*$/.test(idValue) || !Number.isSafeInteger(Number(idValue))) {
+                res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+                res.end(JSON.stringify({ error: 'El identificador del usuario no es válido.' }));
+                return;
+            }
+
+            try {
+                const eliminado = await DB.eliminarUsuario(Number(idValue));
+                if (!eliminado) {
+                    res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+                    res.end(JSON.stringify({ error: 'No se puede eliminar la cuenta principal de administrador.' }));
+                    return;
+                }
+                res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+                res.end(JSON.stringify({ success: true }));
+            } catch (e) {
+                res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+                res.end(JSON.stringify({ error: 'No se pudo eliminar el usuario.' }));
+            }
+            return;
+        }
+
+        res.writeHead(405, { 'Content-Type': 'application/json; charset=utf-8', Allow: 'GET, POST, DELETE' });
         res.end(JSON.stringify({ error: 'Método no permitido.' }));
         return;
     }
@@ -1340,7 +1439,11 @@ const server = http.createServer(async (req, res) => {
         [consultaPath]: 'apeseg.html',
         '/consulta-interna.html': path.join('apeseg', 'consulta-interna.html'),
         '/admin': 'admin.html',
-        '/admin/': 'admin.html'
+        '/admin/': 'admin.html',
+        '/admin.html': 'admin.html',
+        '/index.html': 'index.html',
+        '/login': 'admin.html',
+        '/login.html': 'admin.html'
     };
     const publicPath = publicRoutes[pathname] || (pathname === '/' ? 'index.html' : pathname);
     let filePath = path.join(BASE_DIR, publicPath);
@@ -1388,7 +1491,12 @@ const server = http.createServer(async (req, res) => {
 const cfg = leerConfig();
 const PORT = cfg.puerto || 3000;
 
-DB.initDB(cfg.databaseUrl).then((dbStatus) => {
+DB.initDB(cfg.databaseUrl, {
+    adminUser: cfg.adminUser,
+    adminPassword: cfg.adminPassword,
+    adminNombre: cfg.adminNombre,
+    adminAgencia: cfg.adminAgencia
+}).then((dbStatus) => {
     server.listen(PORT, '0.0.0.0', () => {
         console.log('====================================================');
         console.log('   SOAT LA POSITIVA - SISTEMA CON BASE DE DATOS');
@@ -1397,7 +1505,7 @@ DB.initDB(cfg.databaseUrl).then((dbStatus) => {
         console.log(` Servidor activo en: http://localhost:${PORT}`);
         console.log(` Base de datos: ${dbStatus.tipo} (${dbStatus.estado})`);
         console.log(` Seguridad: Acceso protegido a ventas/dashboard.`);
-        console.log(` Usuario administrador inicial: admin / admin1`);
+        console.log(` Usuario administrador inicial: ${cfg.adminUser} / ${cfg.adminPassword}`);
         console.log(` Yupay API: ${cfg.tokenYupay ? 'SI (SUNARP en vivo)' : 'NO'}`);
         console.log('====================================================\n');
     });

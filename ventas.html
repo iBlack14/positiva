@@ -1234,15 +1234,16 @@
                 <li id="tab-nav-venta" class="active"><a href="javascript:void(0)" onclick="cambiarPestana('venta')">VENTA</a></li>
                 <li id="tab-nav-lista-venta"><a href="javascript:void(0)" onclick="cambiarPestana('lista-venta')">LISTA VENTA</a></li>
                 <li id="tab-nav-lista-cotizacion"><a href="javascript:void(0)" onclick="cambiarPestana('lista-cotizacion')">LISTA COTIZACION</a></li>
+                <li id="tab-nav-usuarios" style="display: none;"><a href="javascript:void(0)" onclick="cambiarPestana('usuarios')">USUARIOS</a></li>
             </ul>
 
             <div class="nav-user-right">
-                <span class="user-agency-text">TACNA - HUGO CHURA Y ASOCIADOS CORREDORES</span>
+                <span class="user-agency-text" id="lblAgenciaUsuario">TACNA - HUGO CHURA Y ASOCIADOS CORREDORES</span>
                 <span class="user-divider">|</span>
                 <div class="user-dropdown-wrapper">
                     <a href="javascript:void(0)" class="user-dropdown-toggle" id="userMenuBtn" onclick="toggleUserDropdown(event)">
                         <i class="icon-user"></i>
-                        <span>VALENTIN PACOMPIA PANDA</span>
+                        <span id="lblNombreUsuario">VALENTIN PACOMPIA PANDA</span>
                         <i class="icon-caret-down"></i>
                     </a>
                     <ul class="user-dropdown-menu" id="userDropdownMenu">
@@ -1791,15 +1792,96 @@
                                 <th>Vigencia</th>
                                 <th>Monto</th>
                                 <th>Estado</th>
+                                <th id="thVendedor" style="display: none;">Vendedor</th>
                                 <th>APESEG</th>
                             </tr>
                         </thead>
                         <tbody id="tbodyListaVentas">
                             <tr>
-                                <td colspan="9" style="text-align: center; color: #888; padding: 25px;">No se encontraron registros de ventas emitidas.</td>
+                                <td colspan="10" style="text-align: center; color: #888; padding: 25px;">No se encontraron registros de ventas emitidas.</td>
                             </tr>
                         </tbody>
                     </table>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- ======================================================== -->
+        <!-- SECCIÓN 4: GESTIÓN DE USUARIOS (Solo Administrador)       -->
+        <!-- ======================================================== -->
+        <div id="vista-usuarios" class="seccion-portal" style="display: none;">
+            <div class="panel-form">
+                <div class="panel-header-teal">ADMINISTRACIÓN DE USUARIOS DEL SISTEMA</div>
+                <div class="panel-content-body">
+                    
+                    <div style="display: grid; grid-template-columns: 320px 1fr; gap: 20px; align-items: start;">
+                        <!-- Formulario de nuevo usuario -->
+                        <div style="background: #fbfbfb; border: 1px solid #e0e0e0; border-radius: 4px; padding: 15px;">
+                            <h4 style="margin-top: 0; color: #FF6A39; font-size: 13px; font-weight: bold; border-bottom: 2px solid #FF6A39; padding-bottom: 5px;">
+                                <i class="icon-user-plus"></i> AGREGAR USUARIO
+                            </h4>
+                            <form id="formNuevoUsuario" onsubmit="crearNuevoUsuario(event)">
+                                <div style="margin-bottom: 10px;">
+                                    <label style="display: block; font-weight: bold; margin-bottom: 3px;">* Usuario (login):</label>
+                                    <input type="text" id="newUsername" class="ctrl-input" style="width: 100%;" required placeholder="Ej: vendedortacna" autocomplete="off" />
+                                </div>
+                                <div style="margin-bottom: 10px;">
+                                    <label style="display: block; font-weight: bold; margin-bottom: 3px;">* Contraseña:</label>
+                                    <input type="password" id="newPassword" class="ctrl-input" style="width: 100%;" required placeholder="Contraseña de acceso" autocomplete="new-password" />
+                                </div>
+                                <div style="margin-bottom: 10px;">
+                                    <label style="display: block; font-weight: bold; margin-bottom: 3px;">* Nombre Completo:</label>
+                                    <input type="text" id="newNombreCompleto" class="ctrl-input" style="width: 100%;" required placeholder="Ej: Juan Perez" />
+                                </div>
+                                <div style="margin-bottom: 10px;">
+                                    <label style="display: block; font-weight: bold; margin-bottom: 3px;">Agencia / Sucursal:</label>
+                                    <input type="text" id="newAgencia" class="ctrl-input" style="width: 100%;" value="TACNA - HUGO CHURA Y ASOCIADOS CORREDORES" />
+                                </div>
+                                <div style="margin-bottom: 15px;">
+                                    <label style="display: block; font-weight: bold; margin-bottom: 3px;">Rol:</label>
+                                    <select id="newRol" class="ctrl-select" style="width: 100%;">
+                                        <option value="VENDEDOR" selected>VENDEDOR (Solo ve sus ventas)</option>
+                                        <option value="ADMIN">ADMINISTRADOR (Acceso total)</option>
+                                    </select>
+                                </div>
+                                <button type="submit" id="btnGuardarUsuario" class="btn-pill-teal" style="width: 100%; justify-content: center; height: 32px; font-size: 12px;">
+                                    <i class="icon-save"></i> Guardar Usuario
+                                </button>
+                                <div id="msgNuevoUsuario" style="margin-top: 10px; font-size: 11px;"></div>
+                            </form>
+                        </div>
+
+                        <!-- Tabla de usuarios registrados -->
+                        <div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                <h4 style="margin: 0; color: #00CBC1; font-size: 13px; font-weight: bold;">
+                                    <i class="icon-group"></i> USUARIOS REGISTRADOS
+                                </h4>
+                                <button type="button" class="btn-pill-orange" onclick="cargarListaUsuarios()">
+                                    <i class="icon-refresh"></i> Actualizar
+                                </button>
+                            </div>
+                            <table class="tabla-ventas">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Usuario</th>
+                                        <th>Nombre Completo</th>
+                                        <th>Agencia</th>
+                                        <th>Rol</th>
+                                        <th>Creado</th>
+                                        <th style="text-align: center;">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbodyUsuarios">
+                                    <tr>
+                                        <td colspan="7" style="text-align: center; color: #888; padding: 20px;">Cargando usuarios...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
 
                 </div>
             </div>
@@ -1968,16 +2050,22 @@
 
     <script>
         // Navegación de pestañas
+        let currentUser = null;
+
         function cambiarPestana(pestana) {
             // Ocultar todas las secciones
             document.getElementById('vista-venta').style.display = 'none';
             document.getElementById('vista-lista-cotizacion').style.display = 'none';
             document.getElementById('vista-lista-venta').style.display = 'none';
+            var vUsuarios = document.getElementById('vista-usuarios');
+            if (vUsuarios) vUsuarios.style.display = 'none';
 
             // Desmarcar pestañas nav
             document.getElementById('tab-nav-venta').classList.remove('active');
             document.getElementById('tab-nav-lista-venta').classList.remove('active');
             document.getElementById('tab-nav-lista-cotizacion').classList.remove('active');
+            var tabU = document.getElementById('tab-nav-usuarios');
+            if (tabU) tabU.classList.remove('active');
 
             if (pestana === 'venta') {
                 document.getElementById('vista-venta').style.display = 'block';
@@ -1992,17 +2080,53 @@
                 document.getElementById('tab-nav-lista-venta').classList.add('active');
                 window.location.hash = 'lista-venta';
                 cargarListaVentas();
+            } else if (pestana === 'usuarios') {
+                if (currentUser && currentUser.rol === 'ADMIN') {
+                    if (vUsuarios) vUsuarios.style.display = 'block';
+                    if (tabU) tabU.classList.add('active');
+                    window.location.hash = 'usuarios';
+                    cargarListaUsuarios();
+                } else {
+                    mostrarMensaje('Acceso restringido solo para administradores.');
+                    cambiarPestana('venta');
+                }
             }
         }
 
-        // Cargar según hash en la URL
-        window.addEventListener('DOMContentLoaded', function() {
+        // Cargar según hash en la URL y validar sesión
+        window.addEventListener('DOMContentLoaded', async function() {
+            try {
+                const res = await fetch('/api/session');
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data && data.user) {
+                        currentUser = data.user;
+                        const lblNombre = document.getElementById('lblNombreUsuario');
+                        if (lblNombre) lblNombre.textContent = currentUser.nombreCompleto || currentUser.username;
+                        const lblAgencia = document.getElementById('lblAgenciaUsuario');
+                        if (lblAgencia) lblAgencia.textContent = currentUser.agencia || 'TACNA - HUGO CHURA Y ASOCIADOS CORREDORES';
+
+                        // Si es ADMIN, mostrar pestaña USUARIOS y columna Vendedor
+                        if (currentUser.rol === 'ADMIN') {
+                            const tabU = document.getElementById('tab-nav-usuarios');
+                            if (tabU) tabU.style.display = 'block';
+                            const thV = document.getElementById('thVendedor');
+                            if (thV) thV.style.display = '';
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error('Error validando sesión:', err);
+            }
+
             var hash = window.location.hash.replace('#', '');
             if (hash === 'lista-cotizacion') {
                 cambiarPestana('lista-cotizacion');
             } else if (hash === 'lista-venta') {
                 cambiarPestana('lista-venta');
                 cargarListaVentas();
+            } else if (hash === 'usuarios') {
+                cambiarPestana('usuarios');
             } else {
                 cambiarPestana('venta');
             }
@@ -2248,13 +2372,15 @@
             const tbody = document.getElementById('tbodyListaVentas');
             if (!tbody) return;
 
+            const esAdmin = currentUser && currentUser.rol === 'ADMIN';
+
             try {
                 const response = await fetch('/api/ventas');
                 if (!response.ok) throw new Error(response.status === 401 ? 'Tu sesión venció. Inicia sesión nuevamente.' : 'No se pudieron cargar las ventas.');
                 const ventas = await response.json();
 
                 if (!ventas || ventas.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: #888; padding: 25px;">No se encontraron registros de ventas emitidas.</td></tr>';
+                    tbody.innerHTML = `<tr><td colspan="${esAdmin ? 10 : 9}" style="text-align: center; color: #888; padding: 25px;">No se encontraron registros de ventas emitidas.</td></tr>`;
                     return;
                 }
 
@@ -2285,6 +2411,13 @@
                     estadoBadge.style.cssText = `background:${v.registro_apeseg_sin_venta ? '#00a89f' : '#4caf50'}; color:white; padding:2px 6px; border-radius:3px; font-size:10px;`;
                     estado.appendChild(estadoBadge);
                     tr.appendChild(estado);
+
+                    if (esAdmin) {
+                        const tdVend = document.createElement('td');
+                        tdVend.innerHTML = `<span style="font-weight: bold; color: #555;">${v.vendedor_usuario || 'admin'}</span><br><small style="color: #888;">${v.vendedor_nombre || 'VALENTIN PACOMPIA PANDA'}</small>`;
+                        tr.appendChild(tdVend);
+                    }
+
                     tr.appendChild(crearCeldaApeseg(v));
                     tbody.appendChild(tr);
                 });
@@ -2293,7 +2426,7 @@
                 tbody.innerHTML = '';
                 const row = document.createElement('tr');
                 const cell = document.createElement('td');
-                cell.colSpan = 9;
+                cell.colSpan = esAdmin ? 10 : 9;
                 cell.style.cssText = 'text-align:center; color:#a52c2c; padding:25px;';
                 cell.textContent = e.message || 'No se pudieron cargar las ventas.';
                 row.appendChild(cell);
@@ -2530,6 +2663,128 @@
             } catch (e) {
                 mostrarMensaje(e.message || 'No se pudo eliminar la venta.');
                 button.disabled = false;
+            }
+        }
+
+        // ==========================================
+        // FUNCIONES DE GESTIÓN DE USUARIOS
+        // ==========================================
+        async function cargarListaUsuarios() {
+            const tbody = document.getElementById('tbodyUsuarios');
+            if (!tbody) return;
+
+            try {
+                const res = await fetch('/api/usuarios');
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Error al cargar usuarios.');
+
+                const usuarios = data.data || [];
+                if (usuarios.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #888; padding: 20px;">No hay usuarios registrados.</td></tr>';
+                    return;
+                }
+
+                tbody.replaceChildren();
+                usuarios.forEach(u => {
+                    const tr = document.createElement('tr');
+
+                    const tdId = document.createElement('td');
+                    tdId.textContent = u.id;
+                    tr.appendChild(tdId);
+
+                    const tdUser = document.createElement('td');
+                    tdUser.innerHTML = `<strong>${u.username}</strong>`;
+                    tr.appendChild(tdUser);
+
+                    const tdNom = document.createElement('td');
+                    tdNom.textContent = u.nombre_completo || '—';
+                    tr.appendChild(tdNom);
+
+                    const tdAge = document.createElement('td');
+                    tdAge.textContent = u.agencia || '—';
+                    tr.appendChild(tdAge);
+
+                    const tdRol = document.createElement('td');
+                    const badgeRol = document.createElement('span');
+                    const esAdm = u.rol === 'ADMIN';
+                    badgeRol.className = esAdm ? 'label-warning' : 'label-success';
+                    badgeRol.textContent = esAdm ? 'ADMINISTRADOR' : 'VENDEDOR';
+                    badgeRol.style.cssText = `background: ${esAdm ? '#FF6A39' : '#00CBC1'}; color: white; padding: 2px 6px; border-radius: 3px; font-size: 10px; font-weight: bold;`;
+                    tdRol.appendChild(badgeRol);
+                    tr.appendChild(tdRol);
+
+                    const tdFec = document.createElement('td');
+                    tdFec.textContent = formatearFechaApeseg(u.creado_en);
+                    tr.appendChild(tdFec);
+
+                    const tdAcc = document.createElement('td');
+                    tdAcc.style.textAlign = 'center';
+                    if (u.username.toLowerCase() === 'admin') {
+                        tdAcc.innerHTML = '<span style="color: #999; font-size: 10px;">Principal</span>';
+                    } else {
+                        const btnDel = document.createElement('button');
+                        btnDel.type = 'button';
+                        btnDel.className = 'btn-cancel';
+                        btnDel.style.cssText = 'padding: 2px 8px; font-size: 10px;';
+                        btnDel.textContent = 'Eliminar';
+                        btnDel.onclick = () => eliminarUsuarioId(u.id, u.username, btnDel);
+                        tdAcc.appendChild(btnDel);
+                    }
+                    tr.appendChild(tdAcc);
+
+                    tbody.appendChild(tr);
+                });
+            } catch (err) {
+                console.error(err);
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: red; padding: 20px;">${err.message}</td></tr>`;
+            }
+        }
+
+        async function crearNuevoUsuario(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btnGuardarUsuario');
+            const msg = document.getElementById('msgNuevoUsuario');
+            msg.innerHTML = '';
+            btn.disabled = true;
+
+            const username = document.getElementById('newUsername').value.trim();
+            const password = document.getElementById('newPassword').value.trim();
+            const nombreCompleto = document.getElementById('newNombreCompleto').value.trim();
+            const agencia = document.getElementById('newAgencia').value.trim();
+            const rol = document.getElementById('newRol').value;
+
+            try {
+                const res = await fetch('/api/usuarios', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password, nombreCompleto, agencia, rol })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'No se pudo crear el usuario.');
+
+                msg.innerHTML = '<span style="color: green; font-weight: bold;">✓ Usuario creado con éxito.</span>';
+                document.getElementById('formNuevoUsuario').reset();
+                document.getElementById('newAgencia').value = 'TACNA - HUGO CHURA Y ASOCIADOS CORREDORES';
+                await cargarListaUsuarios();
+            } catch (err) {
+                msg.innerHTML = `<span style="color: red; font-weight: bold;">✗ ${err.message}</span>`;
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        async function eliminarUsuarioId(id, username, btn) {
+            if (!confirm(`¿Está seguro de eliminar al usuario "${username}"?`)) return;
+            btn.disabled = true;
+            try {
+                const res = await fetch(`/api/usuarios?id=${id}`, { method: 'DELETE' });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'No se pudo eliminar.');
+                mostrarMensaje(`Usuario "${username}" eliminado.`);
+                await cargarListaUsuarios();
+            } catch (err) {
+                mostrarMensaje(err.message);
+                btn.disabled = false;
             }
         }
 

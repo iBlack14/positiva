@@ -15,6 +15,31 @@ const LOCAL_DB_PATH = path.join(BASE_DIR, 'database_store.json');
 let pool = null;
 let usePostgres = false;
 
+// Helpers de Hashing Criptográfico (scrypt + salt aleatorio)
+function hashPassword(password) {
+    if (!password) return '';
+    const salt = crypto.randomBytes(16).toString('hex');
+    const hash = crypto.scryptSync(password, salt, 64).toString('hex');
+    return `${salt}:${hash}`;
+}
+
+function verifyPassword(password, stored) {
+    if (!password || !stored) return false;
+    // Soporte retrocompatible si hay alguna contraseña antigua en texto plano
+    if (!stored.includes(':')) {
+        return crypto.timingSafeEqual(Buffer.from(password), Buffer.from(stored));
+    }
+    const [salt, key] = stored.split(':');
+    if (!salt || !key) return false;
+    try {
+        const keyBuffer = Buffer.from(key, 'hex');
+        const derivedKey = crypto.scryptSync(password, salt, 64);
+        return crypto.timingSafeEqual(keyBuffer, derivedKey);
+    } catch (e) {
+        return false;
+    }
+}
+
 function normalizarPlaca(value) {
     const clean = String(value || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase();
     if (clean.length === 6) {
@@ -45,7 +70,7 @@ function cargarBaseLocal() {
             {
                 id: 1,
                 username: 'admin',
-                password: 'admin1',
+                password: hashPassword('admin1'),
                 nombreCompleto: 'VALENTIN PACOMPIA PANDA',
                 agencia: 'TACNA - HUGO CHURA Y ASOCIADOS CORREDORES',
                 rol: 'ADMIN',
@@ -72,7 +97,7 @@ function guardarBaseLocal(data) {
 // Inicializar y migrar vehículos existentes de vehiculos_db.json
 function sincronizarVehiculosIniciales(dbLocal) {}
 
-async function initDB(databaseUrl) {
+async function initDB(databaseUrl, adminConfig = {}) {
     let localData = cargarBaseLocal();
     if (!Array.isArray(localData.registrosApeseg)) localData.registrosApeseg = [];
     let localRecordsUpdated = 0;
@@ -179,6 +204,9 @@ async function initDB(databaseUrl) {
 
                 ALTER TABLE ventas
                     ADD COLUMN IF NOT EXISTS uso VARCHAR(50);
+
+                ALTER TABLE ventas
+                    ADD COLUMN IF NOT EXISTS usuario_id INT REFERENCES usuarios(id) ON DELETE SET NULL;
             `);
 
             const migratedRecords = await pool.query(`
@@ -192,13 +220,26 @@ async function initDB(databaseUrl) {
             }
 
             // Asegurar usuario admin por defecto en PostgreSQL
-            const userCheck = await pool.query('SELECT id FROM usuarios WHERE username = $1', ['admin']);
+            const adminUser = (adminConfig && adminConfig.adminUser ? adminConfig.adminUser : 'admin').trim();
+            const adminPass = (adminConfig && adminConfig.adminPassword ? adminConfig.adminPassword : 'admin1').trim();
+            const adminNombre = (adminConfig && adminConfig.adminNombre ? adminConfig.adminNombre : 'VALENTIN PACOMPIA PANDA').trim();
+            const adminAgencia = (adminConfig && adminConfig.adminAgencia ? adminConfig.adminAgencia : 'TACNA - HUGO CHURA Y ASOCIADOS CORREDORES').trim();
+
+            const userCheck = await pool.query('SELECT id, password, rol FROM usuarios WHERE LOWER(username) = LOWER($1)', [adminUser]);
+            const adminPassHashed = hashPassword(adminPass);
             if (userCheck.rows.length === 0) {
                 await pool.query(`
                     INSERT INTO usuarios (username, password, nombre_completo, agencia, rol)
-                    VALUES ($1, $2, $3, $4, $5)
-                `, ['admin', 'admin1', 'VALENTIN PACOMPIA PANDA', 'TACNA - HUGO CHURA Y ASOCIADOS CORREDORES', 'ADMIN']);
-                console.log('[DB] Usuario "admin" creado en PostgreSQL.');
+                    VALUES ($1, $2, $3, $4, 'ADMIN')
+                `, [adminUser, adminPassHashed, adminNombre, adminAgencia]);
+                console.log(`[DB] Usuario administrador "${adminUser}" creado en PostgreSQL con contraseña encriptada.`);
+            } else {
+                // Si la contraseña guardada no coincide o no está encriptada, actualizar a hash seguro
+                if (!verifyPassword(adminPass, userCheck.rows[0].password)) {
+                    await pool.query('UPDATE usuarios SET rol = $1, password = $2 WHERE id = $3', ['ADMIN', adminPassHashed, userCheck.rows[0].id]);
+                } else if (!userCheck.rows[0].password.includes(':')) {
+                    await pool.query('UPDATE usuarios SET password = $1 WHERE id = $2', [adminPassHashed, userCheck.rows[0].id]);
+                }
             }
 
             // Sincronizar vehículos de catálogo inicial a PostgreSQL
@@ -219,21 +260,33 @@ async function initDB(databaseUrl) {
 // OPERACIONES DE USUARIOS Y AUTENTICACIÓN
 // -------------------------------------------------------------
 async function autenticarUsuario(username, password) {
+    if (!username || !password) return null;
+    const uClean = username.trim().toLowerCase();
+
     if (usePostgres && pool) {
         try {
             const res = await pool.query(
-                'SELECT * FROM usuarios WHERE LOWER(username) = LOWER($1) AND password = $2',
-                [username, password]
+                'SELECT * FROM usuarios WHERE LOWER(username) = LOWER($1)',
+                [uClean]
             );
             if (res.rows.length > 0) {
                 const u = res.rows[0];
-                return {
-                    id: u.id,
-                    username: u.username,
-                    nombreCompleto: u.nombre_completo,
-                    agencia: u.agencia,
-                    rol: u.rol
-                };
+                if (verifyPassword(password, u.password)) {
+                    // Si la contraseña almacenada estaba en texto plano, auto-migrar a hash seguro
+                    if (!u.password.includes(':')) {
+                        try {
+                            const newHashed = hashPassword(password);
+                            await pool.query('UPDATE usuarios SET password = $1 WHERE id = $2', [newHashed, u.id]);
+                        } catch (err) {}
+                    }
+                    return {
+                        id: u.id,
+                        username: u.username,
+                        nombreCompleto: u.nombre_completo,
+                        agencia: u.agencia,
+                        rol: u.rol
+                    };
+                }
             }
             return null;
         } catch (e) {
@@ -243,13 +296,17 @@ async function autenticarUsuario(username, password) {
 
     const db = cargarBaseLocal();
     const u = db.usuarios.find(
-        x => x.username.toLowerCase() === username.toLowerCase() && x.password === password
+        x => x.username.toLowerCase() === uClean && verifyPassword(password, x.password)
     );
     if (u) {
+        if (!u.password.includes(':')) {
+            u.password = hashPassword(password);
+            guardarBaseLocal(db);
+        }
         return {
             id: u.id,
             username: u.username,
-            nombreCompleto: u.nombreCompleto,
+            nombreCompleto: u.nombreCompleto || u.nombre_completo,
             agencia: u.agencia,
             rol: u.rol
         };
@@ -352,6 +409,110 @@ async function destruirSesion(token) {
 }
 
 // -------------------------------------------------------------
+// GESTIÓN DE USUARIOS
+// -------------------------------------------------------------
+async function listarUsuarios() {
+    if (usePostgres && pool) {
+        try {
+            const res = await pool.query(`
+                SELECT id, username, nombre_completo, agencia, rol, creado_en
+                FROM usuarios
+                ORDER BY creado_en DESC
+            `);
+            return res.rows;
+        } catch (e) {
+            console.error('[DB] Error listando usuarios en Postgres:', e.message);
+        }
+    }
+    const db = cargarBaseLocal();
+    return (db.usuarios || []).map(u => ({
+        id: u.id,
+        username: u.username,
+        nombre_completo: u.nombreCompleto || u.nombre_completo,
+        agencia: u.agencia,
+        rol: u.rol,
+        creado_en: u.creadoEn || u.creado_en
+    }));
+}
+
+async function crearUsuario({ username, password, nombreCompleto, agencia, rol }) {
+    if (!username || !password) throw new Error('Usuario y contraseña son requeridos.');
+    const uClean = username.trim().toLowerCase();
+    const pClean = password.trim();
+    const nClean = (nombreCompleto || username).trim();
+    const aClean = (agencia || 'TACNA - HUGO CHURA Y ASOCIADOS CORREDORES').trim();
+    const rClean = (rol || 'VENDEDOR').trim().toUpperCase();
+    const passwordHashed = hashPassword(pClean);
+
+    if (usePostgres && pool) {
+        try {
+            const existe = await pool.query('SELECT id FROM usuarios WHERE LOWER(username) = LOWER($1)', [uClean]);
+            if (existe.rows.length > 0) {
+                throw new Error('El nombre de usuario ya está registrado.');
+            }
+            const res = await pool.query(`
+                INSERT INTO usuarios (username, password, nombre_completo, agencia, rol)
+                VALUES ($1, $2, $3, $4, $5)
+                RETURNING id, username, nombre_completo, agencia, rol, creado_en
+            `, [uClean, passwordHashed, nClean, aClean, rClean]);
+            return res.rows[0];
+        } catch (e) {
+            console.error('[DB] Error creando usuario en Postgres:', e.message);
+            throw e;
+        }
+    }
+
+    const db = cargarBaseLocal();
+    if (!db.usuarios) db.usuarios = [];
+    if (db.usuarios.some(x => x.username.toLowerCase() === uClean)) {
+        throw new Error('El nombre de usuario ya está registrado.');
+    }
+    const nuevo = {
+        id: db.usuarios.length + 1,
+        username: uClean,
+        password: passwordHashed,
+        nombreCompleto: nClean,
+        nombre_completo: nClean,
+        agencia: aClean,
+        rol: rClean,
+        creadoEn: new Date().toISOString(),
+        creado_en: new Date().toISOString()
+    };
+    db.usuarios.push(nuevo);
+    guardarBaseLocal(db);
+    return {
+        id: nuevo.id,
+        username: nuevo.username,
+        nombre_completo: nuevo.nombre_completo,
+        agencia: nuevo.agencia,
+        rol: nuevo.rol,
+        creado_en: nuevo.creado_en
+    };
+}
+
+async function eliminarUsuario(id) {
+    if (!Number.isSafeInteger(id) || id <= 0) return false;
+
+    if (usePostgres && pool) {
+        try {
+            const res = await pool.query("DELETE FROM usuarios WHERE id = $1 AND LOWER(username) != 'admin'", [id]);
+            return res.rowCount > 0;
+        } catch (e) {
+            console.error('[DB] Error eliminando usuario en Postgres:', e.message);
+            throw e;
+        }
+    }
+
+    const db = cargarBaseLocal();
+    const usuario = (db.usuarios || []).find(u => u.id === id);
+    if (!usuario || usuario.username.toLowerCase() === 'admin') return false;
+
+    db.usuarios = db.usuarios.filter(u => u.id !== id);
+    guardarBaseLocal(db);
+    return true;
+}
+
+// -------------------------------------------------------------
 // OPERACIONES DE VEHÍCULOS
 // -------------------------------------------------------------
 async function obtenerVehiculo(placa) {
@@ -443,19 +604,20 @@ async function guardarVehiculo(v) {
 // -------------------------------------------------------------
 // OPERACIONES DE VENTAS / EMISIÓN
 // -------------------------------------------------------------
-async function registrarVenta(venta) {
+async function registrarVenta(venta, usuarioId = null) {
     if (!venta.placa || !venta.numeroPoliza) return null;
     const placa = normalizarPlaca(venta.placa);
+    const userId = usuarioId || venta.usuarioId || venta.usuario_id || null;
 
     if (usePostgres && pool) {
         try {
             const res = await pool.query(`
-                INSERT INTO ventas (placa, numero_poliza, clase, uso, contratante_nombre, contratante_documento, monto, forma_pago)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                INSERT INTO ventas (placa, numero_poliza, clase, uso, contratante_nombre, contratante_documento, monto, forma_pago, usuario_id)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
                 RETURNING *
             `, [
                 placa, venta.numeroPoliza, venta.clase, venta.uso, venta.contratanteNombre,
-                venta.contratanteDocumento, venta.monto, venta.formaPago
+                venta.contratanteDocumento, venta.monto, venta.formaPago, userId
             ]);
             return res.rows[0];
         } catch (e) {
@@ -474,6 +636,7 @@ async function registrarVenta(venta) {
         contratante_documento: venta.contratanteDocumento,
         monto: venta.monto,
         forma_pago: venta.formaPago,
+        usuario_id: userId,
         emitido_en: new Date().toISOString()
     };
     db.ventas.push(nuevaVenta);
@@ -481,17 +644,39 @@ async function registrarVenta(venta) {
     return nuevaVenta;
 }
 
-async function listarVentas() {
+async function listarVentas(filtroUsuarioId = null) {
     if (usePostgres && pool) {
         try {
-            const res = await pool.query('SELECT * FROM ventas ORDER BY emitido_en DESC');
+            let query = `
+                SELECT v.*, u.username as vendedor_usuario, u.nombre_completo as vendedor_nombre
+                FROM ventas v
+                LEFT JOIN usuarios u ON v.usuario_id = u.id
+            `;
+            const params = [];
+            if (filtroUsuarioId) {
+                query += ' WHERE v.usuario_id = $1';
+                params.push(filtroUsuarioId);
+            }
+            query += ' ORDER BY v.emitido_en DESC';
+            const res = await pool.query(query, params);
             return res.rows;
         } catch (e) {
             console.error('[DB] Error listando ventas en Postgres:', e.message);
         }
     }
     const db = cargarBaseLocal();
-    return [...db.ventas].reverse();
+    let items = db.ventas || [];
+    if (filtroUsuarioId) {
+        items = items.filter(v => v.usuario_id === filtroUsuarioId);
+    }
+    return [...items].reverse().map(v => {
+        const u = (db.usuarios || []).find(user => user.id === v.usuario_id);
+        return {
+            ...v,
+            vendedor_usuario: u ? u.username : null,
+            vendedor_nombre: u ? u.nombreCompleto : null
+        };
+    });
 }
 
 async function eliminarVenta(id) {
@@ -732,5 +917,8 @@ module.exports = {
     listarRegistrosApeseg,
     actualizarRegistroApeseg,
     eliminarRegistroApeseg,
-    cargarBaseLocal
+    cargarBaseLocal,
+    listarUsuarios,
+    crearUsuario,
+    eliminarUsuario
 };
