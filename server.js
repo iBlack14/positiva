@@ -605,18 +605,34 @@ const server = http.createServer(async (req, res) => {
         const rawPlaca = pathname.replace('/wp-json/apeseg-soat/v1/placa/', '');
         const cleanPlate = decodeURIComponent(rawPlaca || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase();
         const placa = cleanPlate;
+        let ventas = [];
+        let registrosApeseg = [];
+        let vehiculo = {};
         try {
-            const [ventas, registrosApeseg] = cleanPlate
-                ? await Promise.all([
+            if (cleanPlate) {
+                const resultados = await Promise.allSettled([
                     DB.buscarVentasPorPlaca(cleanPlate),
-                    DB.listarRegistrosApeseg()
-                ])
-                : [[], []];
+                    DB.listarRegistrosApeseg(),
+                    DB.obtenerVehiculo(cleanPlate)
+                ]);
+                if (resultados[0].status === 'fulfilled' && Array.isArray(resultados[0].value)) {
+                    ventas = resultados[0].value;
+                }
+                if (resultados[1].status === 'fulfilled' && Array.isArray(resultados[1].value)) {
+                    registrosApeseg = resultados[1].value;
+                }
+                if (resultados[2].status === 'fulfilled' && resultados[2].value) {
+                    vehiculo = resultados[2].value;
+                }
+            }
+        } catch (dbErr) {
+            console.error('[APESEG DB] Advertencia consultando DB:', dbErr.message);
+        }
+
+        try {
             const registrosDePlaca = registrosApeseg.filter(registro =>
                 String(registro.placa || '').replace(/[^A-Z0-9]/gi, '').toUpperCase() === cleanPlate
             );
-
-            const vehiculo = (await DB.obtenerVehiculo(cleanPlate)) || {};
             const finDe = fecha => {
                 const d = new Date(fecha);
                 d.setFullYear(d.getFullYear() + 1);
@@ -1171,10 +1187,10 @@ const server = http.createServer(async (req, res) => {
                 }
                 const resultado = await DB.registrarVenta(venta, usuarioId);
                 res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-                res.end(JSON.stringify({ 
-                    success: true, 
+                res.end(JSON.stringify({
+                    success: true,
                     venta: resultado,
-                    mensaje: 'SOAT emitido correctamente y registrado en APESEG.' 
+                    mensaje: 'SOAT emitido correctamente y registrado en APESEG.'
                 }));
             } catch (e) {
                 res.writeHead(400, { 'Content-Type': 'application/json' });
