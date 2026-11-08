@@ -1202,11 +1202,37 @@ const server = http.createServer(async (req, res) => {
     // ==========================================
     // 5.2 ENDPOINT: Listar ventas
     // ==========================================
-    if (pathname === '/api/ventas' && (req.method === 'GET' || req.method === 'DELETE')) {
+    if (pathname === '/api/ventas' && (req.method === 'GET' || req.method === 'DELETE' || req.method === 'PATCH')) {
         const sesionValida = await DB.validarSesion(sessionToken);
         if (!sesionValida) {
             res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' });
             res.end(JSON.stringify({ error: 'Debe iniciar sesión para consultar las ventas.' }));
+            return;
+        }
+
+        if (req.method === 'PATCH') {
+            let body = '';
+            req.on('data', chunk => { body += chunk; });
+            req.on('end', async () => {
+                let data;
+                const id = String(parsedUrl.query.id || '');
+                try { data = JSON.parse(body); } catch { data = null; }
+                if (!/^[1-9]\d*$/.test(id) || !Number.isSafeInteger(Number(id)) || !data || typeof data.pagado !== 'boolean') {
+                    res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+                    res.end(JSON.stringify({ error: 'Datos de pago inválidos.' }));
+                    return;
+                }
+                try {
+                    const esAdmin = (sesionValida.rol || '').toUpperCase() === 'ADMIN';
+                    const usuarioId = esAdmin ? null : Number(sesionValida.userId || sesionValida.id);
+                    const venta = await DB.actualizarPagoVenta(Number(id), data.pagado, usuarioId);
+                    res.writeHead(venta ? 200 : 404, { 'Content-Type': 'application/json; charset=utf-8' });
+                    res.end(JSON.stringify(venta ? { success: true, pagado: venta.pagado } : { error: 'No se encontró la venta.' }));
+                } catch (e) {
+                    res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+                    res.end(JSON.stringify({ error: 'No se pudo guardar el pago.' }));
+                }
+            });
             return;
         }
 
@@ -1284,7 +1310,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (pathname === '/api/ventas') {
-        res.writeHead(405, { 'Content-Type': 'application/json; charset=utf-8', Allow: 'GET, DELETE' });
+        res.writeHead(405, { 'Content-Type': 'application/json; charset=utf-8', Allow: 'GET, DELETE, PATCH' });
         res.end(JSON.stringify({ error: 'Método no permitido.' }));
         return;
     }

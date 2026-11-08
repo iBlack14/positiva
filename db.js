@@ -207,6 +207,8 @@ async function initDB(databaseUrl, adminConfig = {}) {
                 ALTER TABLE registros_apeseg
                     ADD COLUMN IF NOT EXISTS clase VARCHAR(50);
 
+                ALTER TABLE ventas ADD COLUMN IF NOT EXISTS pagado BOOLEAN NOT NULL DEFAULT FALSE;
+
                 ALTER TABLE ventas
                     ADD COLUMN IF NOT EXISTS clase VARCHAR(50);
 
@@ -707,6 +709,23 @@ async function listarVentas(filtroUsuarioId = null) {
     });
 }
 
+async function actualizarPagoVenta(id, pagado, usuarioId = null) {
+    if (usePostgres && pool) {
+        const result = await pool.query(
+            'UPDATE ventas SET pagado = $2 WHERE id = $1 AND ($3::int IS NULL OR usuario_id = $3) RETURNING *',
+            [id, pagado, usuarioId]
+        );
+        return result.rows[0] || null;
+    }
+    const db = cargarBaseLocal();
+    const venta = (db.ventas || []).find(v => Number(v.id) === id &&
+        (usuarioId === null || Number(v.usuario_id) === Number(usuarioId)));
+    if (!venta) return null;
+    venta.pagado = pagado;
+    if (!guardarBaseLocal(db)) throw new Error('No se pudo guardar el pago.');
+    return venta;
+}
+
 async function eliminarVenta(id) {
     if (!Number.isSafeInteger(id) || id <= 0) return false;
 
@@ -939,6 +958,7 @@ module.exports = {
     guardarVehiculo,
     registrarVenta,
     listarVentas,
+    actualizarPagoVenta,
     eliminarVenta,
     buscarVentasPorPlaca,
     registrarRegistroApeseg,

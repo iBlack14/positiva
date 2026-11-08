@@ -1792,13 +1792,14 @@
                                 <th>Vigencia</th>
                                 <th>Monto</th>
                                 <th>Estado</th>
+                                <th>Pagado</th>
                                 <th id="thVendedor" style="display: none;">Vendedor</th>
                                 <th>APESEG</th>
                             </tr>
                         </thead>
                         <tbody id="tbodyListaVentas">
                             <tr>
-                                <td colspan="10" style="text-align: center; color: #888; padding: 25px;">No se encontraron registros de ventas emitidas.</td>
+                                <td colspan="11" style="text-align: center; color: #888; padding: 25px;">No se encontraron registros de ventas emitidas.</td>
                             </tr>
                         </tbody>
                     </table>
@@ -2380,7 +2381,7 @@
                 const ventas = await response.json();
 
                 if (!ventas || ventas.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="${esAdmin ? 10 : 9}" style="text-align: center; color: #888; padding: 25px;">No se encontraron registros de ventas emitidas.</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="${esAdmin ? 11 : 10}" style="text-align: center; color: #888; padding: 25px;">No se encontraron registros de ventas emitidas.</td></tr>`;
                     return;
                 }
 
@@ -2411,6 +2412,7 @@
                     estadoBadge.style.cssText = `background:${v.registro_apeseg_sin_venta ? '#00a89f' : '#4caf50'}; color:white; padding:2px 6px; border-radius:3px; font-size:10px;`;
                     estado.appendChild(estadoBadge);
                     tr.appendChild(estado);
+                    tr.appendChild(crearCeldaPagado(v));
 
                     if (esAdmin) {
                         const tdVend = document.createElement('td');
@@ -2426,12 +2428,51 @@
                 tbody.innerHTML = '';
                 const row = document.createElement('tr');
                 const cell = document.createElement('td');
-                cell.colSpan = esAdmin ? 10 : 9;
+                cell.colSpan = esAdmin ? 11 : 10;
                 cell.style.cssText = 'text-align:center; color:#a52c2c; padding:25px;';
                 cell.textContent = e.message || 'No se pudieron cargar las ventas.';
                 row.appendChild(cell);
                 tbody.appendChild(row);
             }
+        }
+
+        function crearCeldaPagado(venta) {
+            const td = document.createElement('td');
+            if (venta.registro_apeseg_sin_venta) {
+                td.textContent = '—';
+                return td;
+            }
+            const button = document.createElement('button');
+            button.type = 'button';
+            let pagado = venta.pagado === true;
+            function actualizar() {
+                button.textContent = pagado ? 'Sí' : 'No';
+                button.setAttribute('aria-pressed', String(pagado));
+                button.setAttribute('aria-label', `Pagado: ${pagado ? 'Sí' : 'No'}. Cambiar estado de la póliza ${venta.numero_poliza || ''}`);
+                button.style.cssText = `border:1px solid ${pagado ? '#27823c' : '#aaa'};border-radius:4px;padding:5px 14px;cursor:pointer;background:${pagado ? '#e5f5e9' : '#f5f5f5'};color:${pagado ? '#216e33' : '#555'};font-weight:bold;`;
+            }
+            actualizar();
+            button.addEventListener('click', async () => {
+                button.disabled = true;
+                try {
+                    const response = await fetch(`/api/ventas?id=${encodeURIComponent(venta.id)}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ pagado: !pagado })
+                    });
+                    const result = await response.json();
+                    if (!response.ok || !result.success) throw new Error(result.error || 'No se pudo guardar el pago.');
+                    pagado = result.pagado === true;
+                    venta.pagado = pagado;
+                    actualizar();
+                } catch (error) {
+                    mostrarMensaje(error.message || 'No se pudo guardar el pago.');
+                } finally {
+                    button.disabled = false;
+                }
+            });
+            td.appendChild(button);
+            return td;
         }
 
         function crearCeldaApeseg(venta) {
