@@ -1,6 +1,9 @@
 const https = require('https');
 
-const token = 'ypk_QameXbjDrXWwRxOekyjlqyGAOeHqijbqyoVmRaUJBFRISKJsCjyWXNyFnZOeYTKE';
+const token = process.env.YUPAY_TOKEN;
+if (!token) {
+    throw new Error('Define YUPAY_TOKEN en el entorno antes de ejecutar este diagnóstico.');
+}
 const plate = 'Z4A120';
 
 const endpoints = [
@@ -62,4 +65,3 @@ async function run() {
 }
 
 run();
-

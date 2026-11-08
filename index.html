@@ -27,6 +27,38 @@
             z-index: 1999 !important;
         }
 
+        /* Estilo fiel del Botón Aceptar de La Positiva */
+        .btn_aceptar, .btn_Aceptar {
+            display: inline-block !important;
+            font-size: 16px !important;
+            color: #fff !important;
+            text-decoration: none !important;
+            border-radius: 50px !important;
+            cursor: pointer !important;
+            background: #FF6A39 !important;
+            position: relative !important;
+            padding: 12px 42px !important;
+            outline: none !important;
+            border: 0 !important;
+            font-family: inherit !important;
+            font-weight: bold !important;
+            line-height: 1.4 !important;
+            box-shadow: 0 2px 8px rgba(255, 106, 57, 0.35) !important;
+            -webkit-transition: color 0.25s, background-color 0.25s, box-shadow 0.25s !important;
+            transition: color 0.25s, background-color 0.25s, box-shadow 0.25s !important;
+            vertical-align: middle !important;
+        }
+        .btn_aceptar:hover, .btn_Aceptar:hover {
+            background: #ff580f !important;
+            box-shadow: 0 4px 14px rgba(255, 85, 40, 0.5) !important;
+            color: #fff !important;
+        }
+        .btn_aceptar:disabled, .btn_Aceptar:disabled {
+            background: #ccc !important;
+            cursor: not-allowed !important;
+            box-shadow: none !important;
+        }
+
         /* Estilos para reCAPTCHA simulado en Localhost */
         .mock-recaptcha-box {
             width: 304px;
@@ -400,11 +432,11 @@
                     </div>
                 </div>
 
-                <div class="form-group">
+                <div class="form-group" style="margin-top: 15px;">
                     <div class="col-lg-10" style="text-align:left">
                         &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-                        <a href="#" rel="noopener noreferrer" onclick="recuperarContrasena();" style="text-decoration: underline;">Recuperar contraseña</a>
-                        &nbsp;&nbsp;&nbsp;&nbsp;<input type="button" id="btn_Aceptar" class="btn_Aceptar" value="Aceptar" onclick="logueo();" />
+                        <a href="#" rel="noopener noreferrer" onclick="recuperarContrasena();" style="text-decoration: underline; color: #555; font-size: 13px; vertical-align: middle;">Recuperar contraseña</a>
+                        &nbsp;&nbsp;&nbsp;&nbsp;<input type="button" id="btn_Aceptar" class="btn_aceptar btn_Aceptar" value="Aceptar" onclick="logueo();" />
                     </div>
                 </div>
             </form>

@@ -54,10 +54,10 @@ function normalizarPlaca(value) {
     return clean;
 }
 
-// Configuración de Administrador por defecto (se sobreescribe con .env)
+// Credenciales de administrador; deben llegar configuradas por el servidor.
 let cachedAdminConfig = {
-    adminUser: process.env.ADMIN_USER || 'admin',
-    adminPassword: process.env.ADMIN_PASSWORD || 'admin1',
+    adminUser: process.env.ADMIN_USER || '',
+    adminPassword: process.env.ADMIN_PASSWORD || '',
     adminNombre: process.env.ADMIN_NOMBRE || 'Administrador',
     adminAgencia: process.env.ADMIN_AGENCIA || 'Agencia Principal'
 };
@@ -77,8 +77,8 @@ function cargarBaseLocal() {
         usuarios: [
             {
                 id: 1,
-                username: (cachedAdminConfig.adminUser || 'admin').trim().toLowerCase(),
-                password: hashPassword(cachedAdminConfig.adminPassword || 'admin1'),
+                username: cachedAdminConfig.adminUser.trim().toLowerCase(),
+                password: hashPassword(cachedAdminConfig.adminPassword),
                 nombreCompleto: (cachedAdminConfig.adminNombre || 'Administrador').trim(),
                 agencia: (cachedAdminConfig.adminAgencia || 'Agencia Principal').trim(),
                 rol: 'ADMIN',
@@ -111,6 +111,9 @@ async function initDB(databaseUrl, adminConfig = {}) {
         if (adminConfig.adminPassword) cachedAdminConfig.adminPassword = adminConfig.adminPassword;
         if (adminConfig.adminNombre) cachedAdminConfig.adminNombre = adminConfig.adminNombre;
         if (adminConfig.adminAgencia) cachedAdminConfig.adminAgencia = adminConfig.adminAgencia;
+    }
+    if (!cachedAdminConfig.adminUser.trim() || !cachedAdminConfig.adminPassword.trim()) {
+        throw new Error('ADMIN_USER y ADMIN_PASSWORD deben configurarse antes de inicializar la base de datos.');
     }
     let localData = cargarBaseLocal();
     if (!Array.isArray(localData.registrosApeseg)) localData.registrosApeseg = [];
@@ -233,9 +236,9 @@ async function initDB(databaseUrl, adminConfig = {}) {
                 console.log(`[DB] ${migratedRecords.rowCount} registro(s) APESEG actualizado(s) a tipo DIGITAL.`);
             }
 
-            // Asegurar usuario admin por defecto en PostgreSQL
-            const adminUser = (cachedAdminConfig.adminUser || 'admin').trim().toLowerCase();
-            const adminPass = (cachedAdminConfig.adminPassword || 'admin1').trim();
+            // Asegurar el usuario administrador configurado en PostgreSQL.
+            const adminUser = cachedAdminConfig.adminUser.trim().toLowerCase();
+            const adminPass = cachedAdminConfig.adminPassword.trim();
             const adminNombre = (cachedAdminConfig.adminNombre || 'Administrador').trim();
             const adminAgencia = (cachedAdminConfig.adminAgencia || 'Agencia Principal').trim();
 

@@ -135,7 +135,7 @@ body{
     box-shadow:none;
 }
 
-.btn_aceptar{
+.btn_aceptar, .btn_Aceptar {
     display: inline-block;
     font-size: 16px;
     color: #fff;
@@ -151,7 +151,7 @@ body{
     -moz-transition: color 0.25s, background-color 0.25s, box-shadow 0.25s, -moz-transform 0.25s;
     transition: color 0.25s, background-color 0.25s;
 }
-.btn_aceptar:hover {
+.btn_aceptar:hover, .btn_Aceptar:hover {
     background: #ff580f;
     box-shadow: 0 3px 12px rgba(255, 85, 40, 0.5);
 }

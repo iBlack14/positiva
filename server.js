@@ -22,8 +22,8 @@ function leerConfig() {
         apiKey: process.env.API_KEY || '',
         sunarpApiKey: process.env.SUNARP_API_KEY || '',
         reniecApiHost: process.env.RENIEC_API_HOST || 'soat-rec.stkkft.easypanel.host',
-        adminUser: process.env.ADMIN_USER || 'admin',
-        adminPassword: process.env.ADMIN_PASSWORD || 'admin1',
+        adminUser: process.env.ADMIN_USER || '',
+        adminPassword: process.env.ADMIN_PASSWORD || '',
         adminNombre: process.env.ADMIN_NOMBRE || 'Administrador',
         adminAgencia: process.env.ADMIN_AGENCIA || 'Agencia Principal',
         timeoutMs: 10000
@@ -129,6 +129,27 @@ const MIME_TYPES = {
     '.ttf': 'font/ttf',
     '.eot': 'application/vnd.ms-fontobject'
 };
+
+const PUBLIC_ROOT_FILES = new Set([
+    'admin.html',
+    'apeseg-interna.html',
+    'apeseg.html',
+    'cotizacion.html',
+    'dashboard.html',
+    'index.html',
+    'index_original.html',
+    'ventas.html',
+    'favicon.ico'
+]);
+const PUBLIC_STATIC_DIRECTORIES = new Set([
+    'apeseg',
+    'assets',
+    'content',
+    'external',
+    'fonts',
+    'images',
+    'scripts'
+]);
 
 function normalizarPlaca(p) {
     return DB.normalizarPlaca(p);
@@ -1354,6 +1375,13 @@ const server = http.createServer(async (req, res) => {
     // 6. ENDPOINT: Configuración (.env)
     // ==========================================
     if (pathname === '/api/config-sesion') {
+        const sesionConfig = await DB.validarSesion(sessionToken);
+        if (!sesionConfig || sesionConfig.rol !== 'ADMIN') {
+            res.writeHead(sesionConfig ? 403 : 401, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({ error: 'Se requiere una sesión de administrador.' }));
+            return;
+        }
+
         if (req.method === 'POST') {
             let body = '';
             req.on('data', chunk => { body += chunk; });
@@ -1361,10 +1389,25 @@ const server = http.createServer(async (req, res) => {
                 try {
                     const data = JSON.parse(body);
                     const cfg = leerConfig();
-                    if (data.tokenYupay !== undefined) cfg.tokenYupay = data.tokenYupay.trim();
-                    if (data.cookieLaPositiva !== undefined) cfg.cookieLaPositiva = data.cookieLaPositiva.trim();
-                    if (data.databaseUrl !== undefined) cfg.databaseUrl = data.databaseUrl.trim();
-                    guardarConfig(cfg);
+                    if (data.databaseUrl !== undefined) {
+                        res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+                        res.end(JSON.stringify({ error: 'La URL de base de datos solo se configura en el entorno del servidor.' }));
+                        return;
+                    }
+                    for (const key of ['tokenYupay', 'cookieLaPositiva']) {
+                        if (data[key] === undefined) continue;
+                        if (typeof data[key] !== 'string' || /[\r\n]/.test(data[key])) {
+                            res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+                            res.end(JSON.stringify({ error: `El valor de ${key} no es válido.` }));
+                            return;
+                        }
+                        cfg[key] = data[key].trim();
+                    }
+                    if (!guardarConfig(cfg)) {
+                        res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+                        res.end(JSON.stringify({ error: 'No se pudo guardar la configuración.' }));
+                        return;
+                    }
                     res.writeHead(200, { 'Content-Type': 'application/json' });
                     res.end(JSON.stringify({
                         success: true,
@@ -1382,7 +1425,6 @@ const server = http.createServer(async (req, res) => {
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({
                 tieneYupay: Boolean(cfg.tokenYupay && cfg.tokenYupay.length > 5),
-                tokenYupayPreview: cfg.tokenYupay ? (cfg.tokenYupay.substring(0, 8) + '...' + cfg.tokenYupay.substring(cfg.tokenYupay.length - 4)) : '',
                 tienePostgres: Boolean(cfg.databaseUrl && cfg.databaseUrl.length > 5),
                 puerto: cfg.puerto || 3000
             }));
@@ -1446,9 +1488,17 @@ const server = http.createServer(async (req, res) => {
         '/login.html': 'admin.html'
     };
     const publicPath = publicRoutes[pathname] || (pathname === '/' ? 'index.html' : pathname);
-    let filePath = path.join(BASE_DIR, publicPath);
+    let filePath = path.resolve(BASE_DIR, publicPath);
+    const relativePath = path.relative(BASE_DIR, filePath);
+    const pathSegments = relativePath.split(path.sep);
+    const isWithinBase = relativePath !== '..' &&
+        !relativePath.startsWith(`..${path.sep}`) &&
+        !path.isAbsolute(relativePath);
+    const hasHiddenSegment = pathSegments.some(segment => segment.startsWith('.'));
+    const isPublicFile = (pathSegments.length === 1 && PUBLIC_ROOT_FILES.has(relativePath.toLowerCase())) ||
+        (pathSegments.length > 1 && PUBLIC_STATIC_DIRECTORIES.has(pathSegments[0].toLowerCase()));
 
-    if (!filePath.startsWith(BASE_DIR)) {
+    if (!isWithinBase || hasHiddenSegment || !isPublicFile) {
         res.writeHead(403);
         res.end('Acceso denegado');
         return;
@@ -1491,22 +1541,27 @@ const server = http.createServer(async (req, res) => {
 const cfg = leerConfig();
 const PORT = cfg.puerto || 3000;
 
-DB.initDB(cfg.databaseUrl, {
-    adminUser: cfg.adminUser,
-    adminPassword: cfg.adminPassword,
-    adminNombre: cfg.adminNombre,
-    adminAgencia: cfg.adminAgencia
-}).then((dbStatus) => {
-    server.listen(PORT, '0.0.0.0', () => {
-        console.log('====================================================');
-        console.log('   SOAT LA POSITIVA - SISTEMA CON BASE DE DATOS');
-        console.log('   AGENCIA: TACNA - HUGO CHURA Y ASOCIADOS CORREDORES');
-        console.log('====================================================');
-        console.log(` Servidor activo en: http://localhost:${PORT}`);
-        console.log(` Base de datos: ${dbStatus.tipo} (${dbStatus.estado})`);
-        console.log(` Seguridad: Acceso protegido a ventas/dashboard.`);
-        console.log(` Usuario administrador inicial: ${cfg.adminUser} / ${cfg.adminPassword}`);
-        console.log(` Yupay API: ${cfg.tokenYupay ? 'SI (SUNARP en vivo)' : 'NO'}`);
-        console.log('====================================================\n');
+if (!cfg.adminUser.trim() || !cfg.adminPassword.trim()) {
+    console.error('[CONFIG] ADMIN_USER y ADMIN_PASSWORD deben configurarse en el entorno antes de iniciar.');
+    process.exitCode = 1;
+} else {
+    DB.initDB(cfg.databaseUrl, {
+        adminUser: cfg.adminUser,
+        adminPassword: cfg.adminPassword,
+        adminNombre: cfg.adminNombre,
+        adminAgencia: cfg.adminAgencia
+    }).then((dbStatus) => {
+        server.listen(PORT, '0.0.0.0', () => {
+            console.log('====================================================');
+            console.log('   SOAT LA POSITIVA - SISTEMA CON BASE DE DATOS');
+            console.log('   AGENCIA: TACNA - HUGO CHURA Y ASOCIADOS CORREDORES');
+            console.log('====================================================');
+            console.log(` Servidor activo en: http://localhost:${PORT}`);
+            console.log(` Base de datos: ${dbStatus.tipo} (${dbStatus.estado})`);
+            console.log(` Seguridad: Acceso protegido a ventas/dashboard.`);
+            console.log(' Usuario administrador configurado.');
+            console.log(` Yupay API: ${cfg.tokenYupay ? 'SI (SUNARP en vivo)' : 'NO'}`);
+            console.log('====================================================\n');
+        });
     });
-});
+}
