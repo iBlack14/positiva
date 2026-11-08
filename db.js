@@ -136,12 +136,15 @@ async function initDB(databaseUrl, adminConfig = {}) {
                 CREATE TABLE IF NOT EXISTS usuarios (
                     id SERIAL PRIMARY KEY,
                     username VARCHAR(50) UNIQUE NOT NULL,
-                    password VARCHAR(100) NOT NULL,
+                    password TEXT NOT NULL,
                     nombre_completo VARCHAR(150),
                     agencia VARCHAR(150),
                     rol VARCHAR(30) DEFAULT 'ADMIN',
                     creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
+
+                ALTER TABLE usuarios
+                    ALTER COLUMN password TYPE TEXT;
 
                 CREATE TABLE IF NOT EXISTS sesiones (
                     token VARCHAR(100) PRIMARY KEY,
