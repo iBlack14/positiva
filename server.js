@@ -24,8 +24,8 @@ function leerConfig() {
         reniecApiHost: process.env.RENIEC_API_HOST || 'soat-rec.stkkft.easypanel.host',
         adminUser: process.env.ADMIN_USER || 'admin',
         adminPassword: process.env.ADMIN_PASSWORD || 'admin1',
-        adminNombre: process.env.ADMIN_NOMBRE || 'VALENTIN PACOMPIA PANDA',
-        adminAgencia: process.env.ADMIN_AGENCIA || 'TACNA - HUGO CHURA Y ASOCIADOS CORREDORES',
+        adminNombre: process.env.ADMIN_NOMBRE || 'Administrador',
+        adminAgencia: process.env.ADMIN_AGENCIA || 'Agencia Principal',
         timeoutMs: 10000
     };
 

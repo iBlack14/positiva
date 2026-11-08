@@ -54,6 +54,14 @@ function normalizarPlaca(value) {
     return clean;
 }
 
+// Configuración de Administrador por defecto (se sobreescribe con .env)
+let cachedAdminConfig = {
+    adminUser: process.env.ADMIN_USER || 'admin',
+    adminPassword: process.env.ADMIN_PASSWORD || 'admin1',
+    adminNombre: process.env.ADMIN_NOMBRE || 'Administrador',
+    adminAgencia: process.env.ADMIN_AGENCIA || 'Agencia Principal'
+};
+
 // -------------------------------------------------------------
 // BASE DE DATOS LOCAL PERSISTENTE (Fallback seguro y autónomo)
 // -------------------------------------------------------------
@@ -69,10 +77,10 @@ function cargarBaseLocal() {
         usuarios: [
             {
                 id: 1,
-                username: 'admin',
-                password: hashPassword('admin1'),
-                nombreCompleto: 'VALENTIN PACOMPIA PANDA',
-                agencia: 'TACNA - HUGO CHURA Y ASOCIADOS CORREDORES',
+                username: (cachedAdminConfig.adminUser || 'admin').trim().toLowerCase(),
+                password: hashPassword(cachedAdminConfig.adminPassword || 'admin1'),
+                nombreCompleto: (cachedAdminConfig.adminNombre || 'Administrador').trim(),
+                agencia: (cachedAdminConfig.adminAgencia || 'Agencia Principal').trim(),
                 rol: 'ADMIN',
                 creadoEn: new Date().toISOString()
             }
@@ -98,6 +106,12 @@ function guardarBaseLocal(data) {
 function sincronizarVehiculosIniciales(dbLocal) {}
 
 async function initDB(databaseUrl, adminConfig = {}) {
+    if (adminConfig && typeof adminConfig === 'object') {
+        if (adminConfig.adminUser) cachedAdminConfig.adminUser = adminConfig.adminUser;
+        if (adminConfig.adminPassword) cachedAdminConfig.adminPassword = adminConfig.adminPassword;
+        if (adminConfig.adminNombre) cachedAdminConfig.adminNombre = adminConfig.adminNombre;
+        if (adminConfig.adminAgencia) cachedAdminConfig.adminAgencia = adminConfig.adminAgencia;
+    }
     let localData = cargarBaseLocal();
     if (!Array.isArray(localData.registrosApeseg)) localData.registrosApeseg = [];
     let localRecordsUpdated = 0;
@@ -220,10 +234,10 @@ async function initDB(databaseUrl, adminConfig = {}) {
             }
 
             // Asegurar usuario admin por defecto en PostgreSQL
-            const adminUser = (adminConfig && adminConfig.adminUser ? adminConfig.adminUser : 'admin').trim();
-            const adminPass = (adminConfig && adminConfig.adminPassword ? adminConfig.adminPassword : 'admin1').trim();
-            const adminNombre = (adminConfig && adminConfig.adminNombre ? adminConfig.adminNombre : 'VALENTIN PACOMPIA PANDA').trim();
-            const adminAgencia = (adminConfig && adminConfig.adminAgencia ? adminConfig.adminAgencia : 'TACNA - HUGO CHURA Y ASOCIADOS CORREDORES').trim();
+            const adminUser = (cachedAdminConfig.adminUser || 'admin').trim().toLowerCase();
+            const adminPass = (cachedAdminConfig.adminPassword || 'admin1').trim();
+            const adminNombre = (cachedAdminConfig.adminNombre || 'Administrador').trim();
+            const adminAgencia = (cachedAdminConfig.adminAgencia || 'Agencia Principal').trim();
 
             const userCheck = await pool.query('SELECT id, password, rol FROM usuarios WHERE LOWER(username) = LOWER($1)', [adminUser]);
             const adminPassHashed = hashPassword(adminPass);

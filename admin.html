@@ -346,8 +346,8 @@
                     $("#loader").hide();
                     if (res.ok && res.data.success) {
                         sessionStorage.setItem("authenticated", "true");
-                        sessionStorage.setItem("user", (res.data.user && res.data.user.nombreCompleto) || "VALENTIN PACOMPIA PANDA");
-                        sessionStorage.setItem("agency", (res.data.user && res.data.user.agencia) || "TACNA - HUGO CHURA Y ASOCIADOS CORREDORES");
+                        sessionStorage.setItem("user", (res.data.user && res.data.user.nombreCompleto) || "Administrador");
+                        sessionStorage.setItem("agency", (res.data.user && res.data.user.agencia) || "Agencia Principal");
                         sessionStorage.setItem("rol", (res.data.user && res.data.user.rol) || "ADMIN");
                         window.location.href = res.data.redirect || "ventas.html";
                     } else {
