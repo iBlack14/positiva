@@ -598,6 +598,151 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
+    // ==========================================
+    // ENDPOINT: APESEG Oficial /wp-json/apeseg-soat/v1/placa/:placa
+    // ==========================================
+    if (pathname.startsWith('/wp-json/apeseg-soat/v1/placa/') && req.method === 'GET') {
+        const rawPlaca = pathname.replace('/wp-json/apeseg-soat/v1/placa/', '');
+        const placa = normalizarPlaca(decodeURIComponent(rawPlaca || ''));
+        try {
+            const [ventas, registrosApeseg] = placa
+                ? await Promise.all([
+                    DB.buscarVentasPorPlaca(placa),
+                    DB.listarRegistrosApeseg()
+                ])
+                : [[], []];
+            const cleanPlate = placa.replace(/[^A-Z0-9]/g, '');
+            const registrosDePlaca = registrosApeseg.filter(registro =>
+                String(registro.placa || '').replace(/[^A-Z0-9]/gi, '').toUpperCase() === cleanPlate
+            );
+
+            const vehiculo = (await DB.obtenerVehiculo(placa)) || {};
+            const finDe = fecha => {
+                const d = new Date(fecha);
+                d.setFullYear(d.getFullYear() + 1);
+                return d;
+            };
+            const formatearFechaApeseg = (value, incluirHora = false) => {
+                if (!value) return '';
+                const date = new Date(value);
+                if (Number.isNaN(date.getTime())) return String(value);
+                const fechaStr = new Intl.DateTimeFormat('es-PE', {
+                    timeZone: 'America/Lima',
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric'
+                }).format(date);
+                if (!incluirHora) return fechaStr;
+                const horaStr = new Intl.DateTimeFormat('es-PE', {
+                    timeZone: 'America/Lima',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false
+                }).format(date);
+                return `${fechaStr} ${horaStr}`;
+            };
+            const formatearCompania = comp => {
+                const s = String(comp || '').toUpperCase();
+                if (s.includes('POSITIVA')) return 'La Positiva';
+                if (s.includes('RIMAC') || s.includes('RÍMAC')) return 'Rímac';
+                if (s.includes('PACIFICO') || s.includes('PACÍFICO')) return 'Pacífico';
+                if (s.includes('MAPFRE')) return 'Mapfre';
+                if (s.includes('INTERSEGURO')) return 'Interseguro';
+                if (s.includes('QUALITAS') || s.includes('QUÁLITAS')) return 'Quálitas';
+                if (s.includes('PROTECTA')) return 'Protecta Security';
+                return comp || 'La Positiva';
+            };
+            const soloFechaIso = value => {
+                if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+                const date = new Date(value);
+                if (Number.isNaN(date.getTime())) return '';
+                return new Intl.DateTimeFormat('en-CA', {
+                    timeZone: 'America/Lima', year: 'numeric', month: '2-digit', day: '2-digit'
+                }).format(date);
+            };
+            const estadoPorVigencia = (inicioIso, finIso, estadoOriginal) => {
+                if (String(estadoOriginal || '').toUpperCase() === 'ANULADO') return 'ANULADO';
+                const hoy = soloFechaIso(new Date());
+                if (inicioIso > hoy) return 'FUTURO';
+                if (finIso <= hoy) return 'VENCIDO';
+                return 'VIGENTE';
+            };
+
+            const certificados = [
+                ...ventas.map(venta => {
+                    const inicioIso = soloFechaIso(venta.emitido_en);
+                    const finIso = soloFechaIso(finDe(venta.emitido_en));
+                    const fechaFinFormateada = formatearFechaApeseg(finDe(venta.emitido_en));
+                    return {
+                        NombreCompania: 'La Positiva',
+                        NumeroPoliza: venta.numero_poliza || 'POL-' + venta.id,
+                        Placa: normalizarPlaca(venta.placa || placa),
+                        FechaInicio: formatearFechaApeseg(venta.emitido_en),
+                        FechaFin: fechaFinFormateada,
+                        Estado: estadoPorVigencia(inicioIso, finIso),
+                        NombreUsoVehiculo: vehiculo.uso || 'PARTICULAR',
+                        NombreClaseVehiculo: vehiculo.clase || venta.clase || 'AUTOMOVIL',
+                        TipoCertificado: 'DIGITAL',
+                        FechaCreacion: formatearFechaApeseg(venta.emitido_en, true),
+                        FechaAnulacion: null,
+                        FechaControlPolicial: fechaFinFormateada,
+                        NumeroAsientos: null,
+                        ModeloVehiculo: null,
+                        Marca: null
+                    };
+                }),
+                ...registrosDePlaca.map(registro => {
+                    const inicioIso = soloFechaIso(registro.fecha_inicio);
+                    const finIso = soloFechaIso(registro.fecha_fin);
+                    const fechaFinFormateada = formatearFechaApeseg(registro.fecha_fin);
+                    return {
+                        NombreCompania: formatearCompania(registro.compania),
+                        NumeroPoliza: registro.numero_poliza || '',
+                        Placa: normalizarPlaca(registro.placa || placa),
+                        FechaInicio: formatearFechaApeseg(registro.fecha_inicio),
+                        FechaFin: fechaFinFormateada,
+                        Estado: estadoPorVigencia(inicioIso, finIso, registro.estado),
+                        NombreUsoVehiculo: vehiculo.uso || 'PARTICULAR',
+                        NombreClaseVehiculo: vehiculo.clase || registro.clase || 'AUTOMOVIL',
+                        TipoCertificado: ['DIGITAL', 'FISICO'].includes(String(registro.tipo_soat || '').toUpperCase())
+                            ? String(registro.tipo_soat).toUpperCase()
+                            : 'DIGITAL',
+                        FechaCreacion: registro.creado_en ? formatearFechaApeseg(registro.creado_en, true) : formatearFechaApeseg(registro.fecha_inicio, true),
+                        FechaAnulacion: registro.estado === 'ANULADO' ? formatearFechaApeseg(registro.actualizado_en || registro.creado_en) : null,
+                        FechaControlPolicial: fechaFinFormateada,
+                        NumeroAsientos: null,
+                        ModeloVehiculo: null,
+                        Marca: null
+                    };
+                })
+            ];
+
+            if (certificados.length === 0) {
+                res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+                res.end(JSON.stringify({
+                    placa: placa,
+                    certificados: [{
+                        NombreCompania: 'No encontrada',
+                        Estado: 'NO REGISTRADO',
+                        Placa: placa
+                    }]
+                }));
+                return;
+            }
+
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({
+                placa: placa,
+                certificados: certificados
+            }));
+        } catch (e) {
+            console.error('[APESEG API] Error:', e.message);
+            res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({ message: 'Error interno consultando SOAT.' }));
+        }
+        return;
+    }
+
     if (pathname === '/api/consulta' && req.method === 'POST') {
         let body = '';
         let bodyTooLarge = false;
