@@ -603,20 +603,20 @@ const server = http.createServer(async (req, res) => {
     // ==========================================
     if (pathname.startsWith('/wp-json/apeseg-soat/v1/placa/') && req.method === 'GET') {
         const rawPlaca = pathname.replace('/wp-json/apeseg-soat/v1/placa/', '');
-        const placa = normalizarPlaca(decodeURIComponent(rawPlaca || ''));
+        const cleanPlate = decodeURIComponent(rawPlaca || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+        const placa = cleanPlate;
         try {
-            const [ventas, registrosApeseg] = placa
+            const [ventas, registrosApeseg] = cleanPlate
                 ? await Promise.all([
-                    DB.buscarVentasPorPlaca(placa),
+                    DB.buscarVentasPorPlaca(cleanPlate),
                     DB.listarRegistrosApeseg()
                 ])
                 : [[], []];
-            const cleanPlate = placa.replace(/[^A-Z0-9]/g, '');
             const registrosDePlaca = registrosApeseg.filter(registro =>
                 String(registro.placa || '').replace(/[^A-Z0-9]/gi, '').toUpperCase() === cleanPlate
             );
 
-            const vehiculo = (await DB.obtenerVehiculo(placa)) || {};
+            const vehiculo = (await DB.obtenerVehiculo(cleanPlate)) || {};
             const finDe = fecha => {
                 const d = new Date(fecha);
                 d.setFullYear(d.getFullYear() + 1);
@@ -676,7 +676,7 @@ const server = http.createServer(async (req, res) => {
                     return {
                         NombreCompania: 'La Positiva',
                         NumeroPoliza: venta.numero_poliza || 'POL-' + venta.id,
-                        Placa: normalizarPlaca(venta.placa || placa),
+                        Placa: cleanPlate,
                         FechaInicio: formatearFechaApeseg(venta.emitido_en),
                         FechaFin: fechaFinFormateada,
                         Estado: estadoPorVigencia(inicioIso, finIso),
@@ -698,7 +698,7 @@ const server = http.createServer(async (req, res) => {
                     return {
                         NombreCompania: formatearCompania(registro.compania),
                         NumeroPoliza: registro.numero_poliza || '',
-                        Placa: normalizarPlaca(registro.placa || placa),
+                        Placa: cleanPlate,
                         FechaInicio: formatearFechaApeseg(registro.fecha_inicio),
                         FechaFin: fechaFinFormateada,
                         Estado: estadoPorVigencia(inicioIso, finIso, registro.estado),
